@@ -1,4 +1,3 @@
 idf_component_register(SRCS "board_controller.c"
                     INCLUDE_DIRS "."
-                    REQUIRES score_display
-                    REQUIRES clock_display)
+                    REQUIRES clock_display nvs_flash user_config score_display)
