@@ -3,5 +3,5 @@
 void app_main(void)
 {
     Init_CharLCD();
-    CharLCD_Chess_Setup("Aditya", "Raijin", "USA", "USA", "4385", "4783");
+    // CharLCD_Chess_Setup("Aditya", "Raijin", "USA", "USA", "4385", "4783");
 }
