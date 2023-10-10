@@ -15,6 +15,41 @@ void app_main(void)
     GraphicLCD_init_LCD();
 
     vTaskDelay(pdMS_TO_TICKS(1000));
+    int hours = 0;
+    int tens_minutes = 1;
+    int ones_minutes = 0;
+    int tens_seconds = 0;
+    int ones_seconds = 1;
+    while(hours != 0 && tens_minutes != 0 && ones_minutes !=0 && tens_seconds != 0 && ones_seconds!= 0){
+        if(ones_seconds == 0){
+            ones_seconds = 9;
+            if(tens_seconds == 0){
+                tens_seconds = 9;
+                if(ones_minutes == 0){
+                    ones_minutes = 9;
+                    if(tens_minutes == 0 && hours !=0){
+                        tens_minutes = 9;
+                        hours -= 1;
+                    }
+                    else{
+                        tens_minutes -= 1;
+                    }
+                    
+                }
+                else{
+                    ones_minutes -= 1;
+                }
+            }
+            else{
+                tens_seconds -= 1;
+            }
+        }
+        else{
+            ones_seconds -=1;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000000000000000));
+        GraphicLCD_DispNHDPic(hours, tens_minutes, ones_minutes, tens_seconds, ones_seconds);
+    }
 
-    GraphicLCD_DispNHDPic();
+    GraphicLCD_DispNHDPic(1, 4,6, 3, 2);
 }
