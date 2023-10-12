@@ -63,12 +63,83 @@ Might need to rewrite the data and command send functions, check when we get the
 #define DB6 (gpio_num_t)8
 #define DB7 (gpio_num_t)9
 
-void send_signal(uint8_t value){
-  gpio_set_level(E, HIGH);
+//---------------------------------------------------------
+/*
+8_bit_character.c
+Program for writing to Newhaven Display character LCD
 
-  // Need the first 4 bits
+(c) Newhaven Display International, Inc. 
+
+ 	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+*/
+//---------------------------------------------------------
+//---------------------------------------------------------
+/*
+#define E	 P3_4;
+#define D_I	 P3_0;
+#define R_W	 P3_7;
+*/
+char const text1[] = {"Newhaven Display"};
+char const text2[] = {"Character LCD   "};
+
+void Delayms(int n){
+	int i;
+	int j;
+	for (i=0;i<n;i++)
+		for (j=0;j<1000;j++)
+		{;}
+}
+
+void command(char i){
+  gpio_set_level(E, HIGH);
+  gpio_set_level(RS, LOW);
+
+  // Need the left 4 bits
   const uint8_t top_four_masked = 240;
-  uint8_t first_four_bits = value & top_four_masked;
+  uint8_t first_four_bits = i & top_four_masked;
+  first_four_bits = first_four_bits >> 4; 
+  
+  gpio_set_level(DB4, first_four_bits & 1);  
+  gpio_set_level(DB5, ((first_four_bits >> 1) & 1));  
+  gpio_set_level(DB6, ((first_four_bits >> 2) & 1));  
+  gpio_set_level(DB7, ((first_four_bits >> 3) & 1));
+  
+  gpio_set_level(E, HIGH);
+  vTaskDelay(pdMS_TO_TICKS(3));
+  gpio_set_level(E, LOW);
+  vTaskDelay(pdMS_TO_TICKS(3));
+ 
+  // Need the right 4 bits  
+
+  const uint8_t low_masked = 15;
+  uint8_t last_four_bits = i & low_masked;  
+  
+  gpio_set_level(DB4, last_four_bits & 1);
+  gpio_set_level(DB5, ((last_four_bits >> 1) & 1));  
+  gpio_set_level(DB6, ((last_four_bits >> 2) & 1));  
+  gpio_set_level(DB7, ((last_four_bits >> 3) & 1)); 
+   
+  gpio_set_level(E, HIGH);
+  vTaskDelay(pdMS_TO_TICKS(3));
+  gpio_set_level(E, LOW);
+  vTaskDelay(pdMS_TO_TICKS(3));
+}
+
+void write(char i){
+	gpio_set_level(E, HIGH);
+  gpio_set_level(RS, HIGH);
+
+  // Need the left 4 bits
+  const uint8_t top_four_masked = 240;
+  uint8_t first_four_bits = i & top_four_masked;
   first_four_bits = first_four_bits >> 4; 
   
   gpio_set_level(DB4, first_four_bits & 1);  
@@ -77,98 +148,99 @@ void send_signal(uint8_t value){
   gpio_set_level(DB7, ((first_four_bits >> 3) & 1));
   
   vTaskDelay(pdMS_TO_TICKS(10));
-  gpio_set_level(E, LOW);
-  vTaskDelay(pdMS_TO_TICKS(10));
   gpio_set_level(E, HIGH);
   vTaskDelay(pdMS_TO_TICKS(10));
+  gpio_set_level(E, LOW);
+  vTaskDelay(pdMS_TO_TICKS(10));
  
-  // Need the last 4 bits  
+
+  // Need the right 4 bits   
+  vTaskDelay(pdMS_TO_TICKS(100));
+
   const uint8_t low_masked = 15;
-  uint8_t last_four_bits = value & low_masked;  
+  uint8_t last_four_bits = i & low_masked;  
   
   gpio_set_level(DB4, last_four_bits & 1);
   gpio_set_level(DB5, ((last_four_bits >> 1) & 1));  
   gpio_set_level(DB6, ((last_four_bits >> 2) & 1));  
-  gpio_set_level(DB7, ((last_four_bits >> 3) & 1)); 
+  gpio_set_level(DB7, ((last_four_bits >> 3) & 1));
    
   vTaskDelay(pdMS_TO_TICKS(10));
-  gpio_set_level(E, LOW);
-  vTaskDelay(pdMS_TO_TICKS(10));
   gpio_set_level(E, HIGH);
+  vTaskDelay(pdMS_TO_TICKS(10));
+  gpio_set_level(E, LOW);
   vTaskDelay(pdMS_TO_TICKS(10));  
 }
 
-void CharLCD_data(uint8_t d){   //Function that sends data
-  gpio_set_level(RS, HIGH);
-  send_signal(d);
+void init(){
+	// gpio_set_level(E, LOW);
+	vTaskDelay(pdMS_TO_TICKS(50));
   gpio_set_level(RS, LOW);
+  gpio_set_level(E, HIGH);
+	gpio_set_level(DB4, HIGH);
+  gpio_set_level(DB5, HIGH);  
+  gpio_set_level(DB6, LOW);  
+  gpio_set_level(DB7, LOW);
+
+  gpio_set_level(E, HIGH);
+  vTaskDelay(pdMS_TO_TICKS(3));
+  gpio_set_level(E, LOW);
+	vTaskDelay(pdMS_TO_TICKS(5)); //First 
+  printf("First Done\n");
+  command(0x28);
+	//Delayms(5); // Second done
+  printf("Second Done\n");
+  command(0x28);
+	//Delayms(5); // Third done
+  printf("Third Done\n");
+  command(0xE);
+  //Fourth Done
+  //Delayms(10);
+  printf("Fourth Done\n");
+  //Delayms(10);
+	command(0x1);
+  //Delayms(10);
+  // command(0x10);
+  //Delayms(10);
+  command(0x6);
+}
+void home(){
+	command(0x01);
+	vTaskDelay(pdMS_TO_TICKS(5));
+}
+void nextline(){
+	command(0xc0);
+}
+void disp_pic(){
+	int i;
+	home();
+	for (i=0;i<16;i++){
+		write(text1[i]);
+	}
+	 nextline();
+	 for (i=0;i<16;i++){
+		write(text2[i]);
+	}
 }
 
-void CharLCD_send_string(char str[]){
+void send_string(char str[]){
   for(int i =0; str[i] != '\n'; ++i){
-    CharLCD_data(str[i]);
+    write(str[i]);
   }
-}
-
-void Init_CharLCD(){
-  gpio_set_direction(DB4,GPIO_MODE_OUTPUT);          //Set DB4 as output
-  gpio_set_direction(DB5,GPIO_MODE_OUTPUT);          //Set DB5 as output
-  gpio_set_direction(DB6,GPIO_MODE_OUTPUT);          //Set DB6 as output
-  gpio_set_direction(DB7,GPIO_MODE_OUTPUT);          //Set DB7 as output
-  gpio_set_direction(RS,GPIO_MODE_OUTPUT);         //Set RS  as output                
-  gpio_set_direction(E,GPIO_MODE_OUTPUT);         //Set E   as output
-  
-  gpio_set_level(RS,LOW);       //Set RS LOW 
-
-  vTaskDelay(pdMS_TO_TICKS(100));
-
-  gpio_set_level(DB4, HIGH);
-  gpio_set_level(DB5, HIGH);
-  gpio_set_level(DB6, LOW);
-  gpio_set_level(DB7, LOW);       //command 0x30 = Wake up
-  gpio_set_level(E,HIGH);       //Set E  HIGH 
-  vTaskDelay(pdMS_TO_TICKS(10));                  //Delay for 10 miliseconds
-  gpio_set_level(E, LOW);       //Set E  LOW
-
-  vTaskDelay(pdMS_TO_TICKS(30)); 
-
-//command 0x30 = Wake up #2
-  send_signal(0x28);              //Function set: 4-bit/2-line
-
-  vTaskDelay(pdMS_TO_TICKS(10));
-
-//command 0x30 = Wake up #3
-  send_signal(0x28);              //Function set: 4-bit/2-line
-
-  vTaskDelay(pdMS_TO_TICKS(10)); 
-
-
-  // gpio_set_level(DB4, LOW);
-  // gpio_set_level(DB5, HIGH);
-  // gpio_set_level(DB6, LOW);
-  // gpio_set_level(DB7, LOW);       //command 0x30 = Wake up
-  // gpio_set_level(E,HIGH);       //Set E  HIGH 
-  // vTaskDelay(pdMS_TO_TICKS(10));                  //Delay for 10 miliseconds
-  // gpio_set_level(E, LOW);       //Set E  LOW
-  
-
-  send_signal(0x0F);              //Display ON; Cursor ON
-  send_signal(0x10);              //Set cursor
-  send_signal(0x06);              //Entry mode set
 }
 
 void CharLCD_SetLine(int line){
     if(line == 1){
-        send_signal(0x80); //Set DDRAM to 0x00
+        command(0x80); //Set DDRAM to 0x00
     }
     else if(line == 2){
-        send_signal(0xC0); //Set DDRAM to 0x40
+        command(0xC0); //Set DDRAM to 0x40
     }
     else if(line == 3){
-        send_signal(0x94); //Set DDRAM to 0x14
+        command(0x94); //Set DDRAM to 0x14
     }
     else if(line == 4){
-        send_signal(0xD4); //Set DDRAM to 0x54
+        command(0xD4); //Set DDRAM to 0x54
     }
 }
 
@@ -188,74 +260,74 @@ void CharLCD_SetLineEnd(int line, int strlen){
     start += 0x67;
   }
   start -= strlen;
-  send_signal(start);
+  command(start);
 }
 
 void CharLCD_clearline(int line){
   CharLCD_SetLine(line);
   for(int i = 0; i < 20; i++){
-    CharLCD_data(' ');
+    write(' ');
   }
 }
 
 void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char country2[], char rank1[], char rank2[]){
   CharLCD_clearline(1);
   CharLCD_SetLine(1); // Names of Players
-  CharLCD_send_string(name1);
-  CharLCD_SetLineEnd(1, strlen(name2));
+  send_string(name1);
+  //CharLCD_SetLineEnd(1, strlen(name2));
   //Need to set DDRAM to end of line 1 minus length of 2nd string
-  CharLCD_send_string(name2);
+  send_string(name2);
 
   CharLCD_clearline(2);
   CharLCD_SetLine(2); // Country of Players
-  CharLCD_data('(');
-  CharLCD_send_string(country1);
-  CharLCD_data(')');
-   CharLCD_SetLineEnd(2, strlen(country2)+2);
-  CharLCD_data('(');
-  CharLCD_send_string(country2);
-  CharLCD_data(')');
+  write('(');
+  send_string(country1);
+  write(')');
+  CharLCD_SetLineEnd(2, strlen(country2)+2);
+  write('(');
+  send_string(country2);
+  write(')');
   //Need to set DDRAM to end of line 2 minus length of 2nd string
 
   CharLCD_clearline(3); //Nothing needs to be here unless draw is offered or game is over
 
   CharLCD_clearline(4);
   CharLCD_SetLine(4); // Chess Rank?
-  CharLCD_send_string(rank1);
+  send_string(rank1);
   CharLCD_SetLineEnd(1, strlen(rank2));
-  CharLCD_send_string(rank2);
+  send_string(rank2);
   //Need to set DDRAM to end of line 4 minus length of 2nd string
 
 }
 
 void CharLCD_OfferDraw(bool LtR){
   CharLCD_clearline(3);
-  send_signal(0x80+0x1B);
-  CharLCD_send_string("Draw?");
-  send_signal(0x80+0x5B);
+  command(0x80+0x1B);
+  send_string("Draw?");
+  command(0x80+0x5B);
   if(LtR){
-    CharLCD_send_string("---->");
+    send_string("---->");
   }
   else{
-    CharLCD_send_string("<----");
+    send_string("<----");
   }
 }
 
 void CharLCD_AcceptDraw(char rank1[], char rank2[]){
   CharLCD_clearline(4);
   CharLCD_SetLine(4); // Chess Rank?
-  CharLCD_send_string(rank1);
+  send_string(rank1);
   CharLCD_SetLineEnd(1, strlen(rank2));
-  CharLCD_send_string(rank2);
+  send_string(rank2);
   CharLCD_clearline(3);
-  send_signal(0x80+0x17);
-  CharLCD_send_string("Draw Accepted");
+  command(0x80+0x17);
+  send_string("Draw Accepted");
 }
 
 void CharLCD_WinUpdate(char P1wins, char P2wins){
   CharLCD_clearline(3);
-  send_signal(0x80+0x1C);
-  CharLCD_data(P1wins);
-  CharLCD_data('-');
-  CharLCD_data(P2wins);
+  command(0x80+0x1C);
+  write(P1wins);
+  write('-');
+  write(P2wins);
 }
