@@ -155,7 +155,6 @@ void write(char i){
  
 
   // Need the right 4 bits   
-  vTaskDelay(pdMS_TO_TICKS(100));
 
   const uint8_t low_masked = 15;
   uint8_t last_four_bits = i & low_masked;  
@@ -272,14 +271,14 @@ void CharLCD_clearline(int line){
 }
 
 void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char country2[], char rank1[], char rank2[]){
-  CharLCD_clearline(1);
+  //CharLCD_clearline(1);
   CharLCD_SetLine(1); // Names of Players
   send_string(name1);
   CharLCD_SetLineEnd(1, strlen(name2));
   //Need to set DDRAM to end of line 1 minus length of 2nd string
   send_string(name2);
 
-  CharLCD_clearline(2);
+  //CharLCD_clearline(2);
   CharLCD_SetLine(2); // Country of Players
   write('(');
   send_string(country1);
@@ -290,9 +289,9 @@ void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char count
   write(')');
   //Need to set DDRAM to end of line 2 minus length of 2nd string
 
-  CharLCD_clearline(3); //Nothing needs to be here unless draw is offered or game is over
+  //CharLCD_clearline(3); //Nothing needs to be here unless draw is offered or game is over
 
-  CharLCD_clearline(4);
+  // CharLCD_clearline(4);
   CharLCD_SetLine(4); // Chess Rank?
   send_string(rank1);
   CharLCD_SetLineEnd(4, strlen(rank2));
@@ -302,7 +301,7 @@ void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char count
 }
 
 void CharLCD_OfferDraw(bool LtR){
-  CharLCD_clearline(3);
+  //CharLCD_clearline(3);
   command(0x80+0x1B);
   send_string("Draw?");
   command(0x80+0x5B);
@@ -314,21 +313,24 @@ void CharLCD_OfferDraw(bool LtR){
   }
 }
 
-void CharLCD_AcceptDraw(char rank1[], char rank2[]){
-  CharLCD_clearline(4);
-  CharLCD_SetLine(4); // Chess Rank?
-  send_string(rank1);
-  CharLCD_SetLineEnd(1, strlen(rank2));
-  send_string(rank2);
-  CharLCD_clearline(3);
+void CharLCD_DrawStatus(bool accepted){
+  command(0x5B+0x80);
+  send_string("     ");
+  
+  //CharLCD_clearline(3);
   command(0x80+0x17);
-  send_string("Draw Accepted");
+  if(accepted){
+    send_string("Draw Accepted");
+  }
+  else{
+    send_string("Draw Denied");
+  }
 }
 
-void CharLCD_WinUpdate(char P1wins, char P2wins){
+void CharLCD_WinUpdate(char P1wins[], char P2wins[]){
   CharLCD_clearline(3);
   command(0x80+0x1C);
-  write(P1wins);
+  send_string(P1wins);
   write('-');
-  write(P2wins);
+  send_string(P2wins);
 }

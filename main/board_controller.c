@@ -16,9 +16,10 @@ void app_main(void)
     // gpio_set_level(RS, LOW);
   
     init();
-    CharLCD_Chess_Setup("Aditya", "Raijin", "USA", "USA", "3454", "3453");
+    CharLCD_Chess_Setup("Aditya", "Raijin", "Texas", "Holland", "3454", "3453");
     CharLCD_OfferDraw(true);
-    CharLCD_AcceptDraw("3454", "3453");
+    CharLCD_DrawStatus(false);
+    CharLCD_WinUpdate("22","0");
 	// while(1){
     //     // vTaskDelay(pdMS_TO_TICKS(1000));
 	// 	// write('!');
