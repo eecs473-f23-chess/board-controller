@@ -224,7 +224,8 @@ void disp_pic(){
 }
 
 void send_string(char str[]){
-  for(int i =0; str[i] != '\n'; ++i){
+  for(int i =0; i < strlen(str); ++i){
+    // printf(str[i]);
     write(str[i]);
   }
 }
@@ -248,16 +249,16 @@ void CharLCD_SetLineEnd(int line, int strlen){
   uint8_t start = 0x80;
   //Need to change the below to the end of the line
   if(line == 1){
-    start += 0x13;
+    start += 0x14;
   }
   else if(line == 2){
-    start += 0x53;
+    start += 0x54;
   }
   else if(line == 3){
-    start += 0x27;
+    start += 0x28;
   }
   else if(line == 4){
-    start += 0x67;
+    start += 0x68;
   }
   start -= strlen;
   command(start);
@@ -274,7 +275,7 @@ void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char count
   CharLCD_clearline(1);
   CharLCD_SetLine(1); // Names of Players
   send_string(name1);
-  //CharLCD_SetLineEnd(1, strlen(name2));
+  CharLCD_SetLineEnd(1, strlen(name2));
   //Need to set DDRAM to end of line 1 minus length of 2nd string
   send_string(name2);
 
@@ -294,7 +295,7 @@ void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char count
   CharLCD_clearline(4);
   CharLCD_SetLine(4); // Chess Rank?
   send_string(rank1);
-  CharLCD_SetLineEnd(1, strlen(rank2));
+  CharLCD_SetLineEnd(4, strlen(rank2));
   send_string(rank2);
   //Need to set DDRAM to end of line 4 minus length of 2nd string
 

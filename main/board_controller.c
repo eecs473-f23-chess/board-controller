@@ -17,6 +17,8 @@ void app_main(void)
   
     init();
     CharLCD_Chess_Setup("Aditya", "Raijin", "USA", "USA", "3454", "3453");
+    CharLCD_OfferDraw(true);
+    CharLCD_AcceptDraw("3454", "3453");
 	// while(1){
     //     // vTaskDelay(pdMS_TO_TICKS(1000));
 	// 	// write('!');
