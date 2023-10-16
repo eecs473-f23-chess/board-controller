@@ -11,6 +11,8 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include "wifi.h"
+
 #define MOBILE_APP_BLE_APP_ID       0
 
 // Wifi service
@@ -194,6 +196,12 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
             for (uint16_t i = 0; i < num_chars; ++i) {
                 uint16_t char_uuid = chars[i].uuid.uuid.uuid16;
                 uint16_t char_handle = chars[i].char_handle;
+                ret = esp_ble_gattc_register_for_notify(ble_gatt_if, ble_remote_addr, char_handle);
+                if (ret != ESP_OK) {
+                    ESP_LOGW(TAG, "Failed to register characteristic notification");
+                    continue;
+                }
+
                 switch (service_uuid) {
                     case WIFI_SERVICE_UUID:
                         switch (char_uuid) {
@@ -233,21 +241,68 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
 
             free(chars);
             break;
+        case ESP_GATTC_REG_FOR_NOTIFY_EVT:
+            ESP_LOGI(TAG, "ESP_GATTC_REG_FOR_NOTIFY_EVT");
+            break;
         case ESP_GATTC_SEARCH_CMPL_EVT:
             ESP_LOGI(TAG, "ESP_GATTC_SEARCH_CMPL_EVT");
+
+            // Send wifi ssid
+            char* ssid = wifi_get_ssid();
+            ret = esp_ble_gattc_write_char(ble_gatt_if, ble_conn_id, wifi_ssid_char_handle, strlen(ssid) + 1, (uint8_t*)ssid, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed writing wifi ssid");
+                exit(1);
+            }
+
+            // Send wifi connection status
+            bool is_connected = wifi_is_connected();
+            ret = esp_ble_gattc_write_char(ble_gatt_if, ble_conn_id, wifi_connected_char_handle, sizeof(is_connected), (uint8_t*)&is_connected, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed writing wifi connected status");
+                exit(1);
+            }
             break;
         case ESP_GATTC_NOTIFY_EVT:
             ESP_LOGI(TAG, "ESP_GATTC_NOTIFY_EVT");
             uint16_t data_len = param->notify.value_len;
             uint8_t* data = param->notify.value;
+            uint16_t handle = param->notify.handle;
 
-            printf("Received %u bytes of data", data_len);
-            printf("Data: ");
-            for (int i = 0; i < data_len; ++i) {
-                printf("%02X ", data[i]);
+            if (handle == wifi_ssid_char_handle) {
+                ESP_LOGI(TAG, "Received wifi ssid");
+                wifi_set_ssid((char*)data, data_len);
             }
-            printf("\n");
+            else if (handle == wifi_pw_char_handle) {
+                ESP_LOGI(TAG, "Received wifi pw");
+                wifi_set_pw((char*)data, data_len);
+                bool is_connected = wifi_connect();
+
+                // Reply with connection status
+                ESP_LOGI(TAG, "Sending connection status");
+                ret = esp_ble_gattc_write_char(ble_gatt_if, ble_conn_id, wifi_connected_char_handle, sizeof(is_connected), (uint8_t*)&is_connected, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed writing wifi connected status");
+                    exit(1);
+                }
+            }
+            else if (handle == wifi_connected_char_handle) {
+                ESP_LOGE(TAG, "Wifi connected characteristic is write only");
+            }
+            else if (handle == lichess_bearer_token_char_handle) {
+                ESP_LOGI(TAG, "Received lichess bearer token");
+                // TODO set bearer token
+                ESP_LOGI(TAG, "token: %.*s", data_len, data);
+            }
+            else {
+                ESP_LOGW(TAG, "Data from unhandled characteristic handle received");
+            }
+
             break;
+        case ESP_GATTC_WRITE_CHAR_EVT:
+            ESP_LOGI(TAG, "ESP_GATTC_WRITE_CHAR_EVT");
+            break;
+
         default:
             ESP_LOGW(TAG, "Unhandled event %d", event);
     }
