@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include "lichess_api.h"
 #include "wifi.h"
 
 #define MOBILE_APP_BLE_APP_ID       0
@@ -291,8 +292,7 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
             }
             else if (handle == lichess_bearer_token_char_handle) {
                 ESP_LOGI(TAG, "Received lichess bearer token");
-                // TODO set bearer token
-                ESP_LOGI(TAG, "token: %.*s", data_len, data);
+                lichess_api_login((char*)data, data_len);
             }
             else {
                 ESP_LOGW(TAG, "Data from unhandled characteristic handle received");
@@ -358,9 +358,5 @@ void mobile_app_ble_init(void) {
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed setting gatt MTU: %s", esp_err_to_name(ret));
         exit(1);
-    }
-
-    while (1) {
-        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
