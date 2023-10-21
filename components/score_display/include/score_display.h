@@ -172,6 +172,13 @@ void write(char i){
 }
 
 void init(){
+  gpio_set_direction(DB4,GPIO_MODE_OUTPUT);          //Set DB4 as output
+  gpio_set_direction(DB5,GPIO_MODE_OUTPUT);          //Set DB5 as output
+  gpio_set_direction(DB6,GPIO_MODE_OUTPUT);          //Set DB6 as output
+  gpio_set_direction(DB7,GPIO_MODE_OUTPUT);          //Set DB7 as output
+  gpio_set_direction(RS,GPIO_MODE_OUTPUT);         //Set RS  as output                
+  gpio_set_direction(E,GPIO_MODE_OUTPUT);         //Set E   as output
+
 	// gpio_set_level(E, LOW);
 	vTaskDelay(pdMS_TO_TICKS(50));
   gpio_set_level(RS, LOW);
