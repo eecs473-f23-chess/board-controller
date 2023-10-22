@@ -1,6 +1,3 @@
-idf_component_register(SRCS
+idf_component_register(SRCS "Hall_Effect.c"
                     INCLUDE_DIRS "include"
-                    REQUIRES driver
-                    REQUIRES freertos
-                    REQUIRES esp_adc
-                    REQUIRES hal)
+                    REQUIRES driver hal freertos esp_adc)
