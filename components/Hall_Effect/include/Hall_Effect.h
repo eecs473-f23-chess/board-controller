@@ -17,3 +17,5 @@ void set_Square_Mux(int i);
 void set_Board_Mux(int i);
 
 void select_xy_sensor(int x, int y);
+
+void poll_board();
