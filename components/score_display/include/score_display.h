@@ -53,15 +53,14 @@ Might need to rewrite the data and command send functions, check when we get the
 #include <string.h>
 #include "freertos/task.h"
 
-#define RS  (gpio_num_t)10
-#define RW  (gpio_num_t)11
-#define E   (gpio_num_t)12
+#define RS  (gpio_num_t)13  //13
+#define E   (gpio_num_t)6 //6
 #define LOW 0
 #define HIGH 1
-#define DB4 (gpio_num_t)6
-#define DB5 (gpio_num_t)7
-#define DB6 (gpio_num_t)8
-#define DB7 (gpio_num_t)9
+#define DB4 (gpio_num_t)21  //21
+#define DB5 (gpio_num_t)47//47
+#define DB6 (gpio_num_t)48 //48
+#define DB7 (gpio_num_t)45 //45
 
 //---------------------------------------------------------
 /*
@@ -126,7 +125,7 @@ void command(char i){
   gpio_set_level(DB5, ((last_four_bits >> 1) & 1));  
   gpio_set_level(DB6, ((last_four_bits >> 2) & 1));  
   gpio_set_level(DB7, ((last_four_bits >> 3) & 1)); 
-   
+  
   gpio_set_level(E, HIGH);
   vTaskDelay(pdMS_TO_TICKS(3));
   gpio_set_level(E, LOW);
@@ -278,21 +277,57 @@ void CharLCD_clearline(int line){
 }
 
 void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char country2[], char rank1[], char rank2[]){
-  //CharLCD_clearline(1);
+  // CharLCD_clearline(1);
   CharLCD_SetLine(1); // Names of Players
-  send_string(name1);
-  CharLCD_SetLineEnd(1, strlen(name2));
-  //Need to set DDRAM to end of line 1 minus length of 2nd string
-  send_string(name2);
+  if(strlen(name1) > 9){
+  char name1temp[10];
+  strncpy(name1temp, name1, 9);
+  name1temp[9] = '\0';
+  send_string(name1temp);
+  }
+  else{
+    send_string(name1);
+  }
+
+  if(strlen(name2) > 9){
+  CharLCD_SetLineEnd(1, 9);
+  char name2temp[10];
+  strncpy(name2temp, name2, 9);
+  name2temp[9] = '\0';
+  send_string(name2temp);
+  }
+  else{
+    CharLCD_SetLineEnd(1, strlen(name2));
+    send_string(name2);
+  }
 
   //CharLCD_clearline(2);
   CharLCD_SetLine(2); // Country of Players
   write('(');
-  send_string(country1);
+  if(strlen(country1) > 7){
+  char country1temp[10];
+  strncpy(country1temp, country1, 7);
+  country1temp[7] = '\0';
+  send_string(country1temp);
+  }
+  else{
+    send_string(country1);
+  }
   write(')');
-  CharLCD_SetLineEnd(2, strlen(country2)+2);
+  
+  if(strlen(country2) > 7){
+  CharLCD_SetLineEnd(2, 9);
   write('(');
-  send_string(country2);
+  char country2temp[10];
+  strncpy(country2temp, country2, 7);
+  country2temp[7] = '\0';
+  send_string(country2temp);
+  }
+  else{
+    CharLCD_SetLineEnd(2, strlen(country2)+2);
+    write('(');
+    send_string(country2);
+  }
   write(')');
   //Need to set DDRAM to end of line 2 minus length of 2nd string
 
