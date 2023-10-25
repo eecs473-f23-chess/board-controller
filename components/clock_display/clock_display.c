@@ -194,14 +194,25 @@ void GraphicLCD_init_LCD()
   GraphicLCD_ClearLCD(false);
 }
 
-void GraphicLCD_DispClock(int hour, int min_tens, int min_ones, int sec_tens, int sec_ones, bool left)
+void GraphicLCD_DispClock(int ms, bool left)
 {
+  int seconds = ms/1000;
+  int minutes = seconds/60;
+  seconds -= minutes*60;
+  int sec_ones = seconds%10;
+  int sec_tens = seconds/10;
+  int hour = minutes/60;
+  minutes -= hour*60;
+  int min_ones = minutes%10;
+  int min_tens = minutes/10;
+
   unsigned char mask[1024];
   for(int i = 0; i <1024; ++i){
     mask[i] = (hours[hour])[i] | (minutes_ones[min_ones])[i] | Colons[i] | (minutes_tens[min_tens])[i] | (seconds_ones[sec_ones])[i] | (seconds_tens[sec_tens])[i];
   }
   GraphicLCD_DispPic(mask, left);
 }
+
 
 
 // GraphicLCD_init_LCD();

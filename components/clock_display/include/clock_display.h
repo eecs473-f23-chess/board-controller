@@ -21,4 +21,4 @@ void GraphicLCD_comm_write(unsigned char d, bool left);
 void GraphicLCD_DispPic(unsigned char *lcd_string, bool left);
 void GraphicLCD_ClearLCD(bool left);
 void GraphicLCD_init_LCD();
-void GraphicLCD_DispClock(int hour, int min_tens, int min_ones, int sec_tens, int sec_ones, bool left);
+void GraphicLCD_DispClock(int ms, bool left);

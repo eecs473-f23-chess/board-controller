@@ -86,18 +86,8 @@ Program for writing to Newhaven Display character LCD
 #define D_I	 P3_0;
 #define R_W	 P3_7;
 */
-char const text1[] = {"Newhaven Display"};
-char const text2[] = {"Character LCD   "};
 
-void Delayms(int n){
-	int i;
-	int j;
-	for (i=0;i<n;i++)
-		for (j=0;j<1000;j++)
-		{;}
-}
-
-void command(char i){
+void scoreboard_command(char i){
   gpio_set_level(E, HIGH);
   gpio_set_level(RS, LOW);
 
@@ -132,7 +122,7 @@ void command(char i){
   vTaskDelay(pdMS_TO_TICKS(3));
 }
 
-void write(char i){
+void scoreboard_write(char i){
 	gpio_set_level(E, HIGH);
   gpio_set_level(RS, HIGH);
 
@@ -170,7 +160,7 @@ void write(char i){
   vTaskDelay(pdMS_TO_TICKS(10));  
 }
 
-void init(){
+void scoreboard_init(){
   gpio_set_direction(DB4,GPIO_MODE_OUTPUT);          //Set DB4 as output
   gpio_set_direction(DB5,GPIO_MODE_OUTPUT);          //Set DB5 as output
   gpio_set_direction(DB6,GPIO_MODE_OUTPUT);          //Set DB6 as output
@@ -192,65 +182,48 @@ void init(){
   gpio_set_level(E, LOW);
 	vTaskDelay(pdMS_TO_TICKS(5)); //First 
   printf("First Done\n");
-  command(0x28);
+  scoreboard_command(0x28);
 	//Delayms(5); // Second done
   printf("Second Done\n");
-  command(0x28);
+  scoreboard_command(0x28);
 	//Delayms(5); // Third done
   printf("Third Done\n");
-  command(0xE);
+  scoreboard_command(0xE);
   //Fourth Done
   //Delayms(10);
   printf("Fourth Done\n");
   //Delayms(10);
-	command(0x1);
+	scoreboard_command(0x1);
   //Delayms(10);
   // command(0x10);
   //Delayms(10);
-  command(0x6);
+  scoreboard_command(0x6);
 }
-void home(){
-	command(0x01);
-	vTaskDelay(pdMS_TO_TICKS(5));
-}
-void nextline(){
-	command(0xc0);
-}
-void disp_pic(){
-	int i;
-	home();
-	for (i=0;i<16;i++){
-		write(text1[i]);
-	}
-	 nextline();
-	 for (i=0;i<16;i++){
-		write(text2[i]);
-	}
-}
+
 
 void send_string(char str[]){
   for(int i =0; i < strlen(str); ++i){
     // printf(str[i]);
-    write(str[i]);
+    scoreboard_write(str[i]);
   }
 }
 
-void CharLCD_SetLine(int line){
+void scoreboard_SetLine(int line){
     if(line == 1){
-        command(0x80); //Set DDRAM to 0x00
+        scoreboard_command(0x80); //Set DDRAM to 0x00
     }
     else if(line == 2){
-        command(0xC0); //Set DDRAM to 0x40
+        scoreboard_command(0xC0); //Set DDRAM to 0x40
     }
     else if(line == 3){
-        command(0x94); //Set DDRAM to 0x14
+        scoreboard_command(0x94); //Set DDRAM to 0x14
     }
     else if(line == 4){
-        command(0xD4); //Set DDRAM to 0x54
+        scoreboard_command(0xD4); //Set DDRAM to 0x54
     }
 }
 
-void CharLCD_SetLineEnd(int line, int strlen){
+void scoreboard_SetLineEnd(int line, int strlen){
   uint8_t start = 0x80;
   //Need to change the below to the end of the line
   if(line == 1){
@@ -266,19 +239,19 @@ void CharLCD_SetLineEnd(int line, int strlen){
     start += 0x68;
   }
   start -= strlen;
-  command(start);
+  scoreboard_command(start);
 }
 
-void CharLCD_clearline(int line){
-  CharLCD_SetLine(line);
+void scoreboard_clearline(int line){
+  scoreboard_SetLine(line);
   for(int i = 0; i < 20; i++){
-    write(' ');
+    scoreboard_write(' ');
   }
 }
 
-void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char country2[], char rank1[], char rank2[]){
+void scoreboard_Chess_Setup(char name1[], char name2[], char country1[], char country2[], char rank1[], char rank2[]){
   // CharLCD_clearline(1);
-  CharLCD_SetLine(1); // Names of Players
+  scoreboard_SetLine(1); // Names of Players
   if(strlen(name1) > 9){
   char name1temp[10];
   strncpy(name1temp, name1, 9);
@@ -290,20 +263,20 @@ void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char count
   }
 
   if(strlen(name2) > 9){
-  CharLCD_SetLineEnd(1, 9);
+  scoreboard_SetLineEnd(1, 9);
   char name2temp[10];
   strncpy(name2temp, name2, 9);
   name2temp[9] = '\0';
   send_string(name2temp);
   }
   else{
-    CharLCD_SetLineEnd(1, strlen(name2));
+    scoreboard_SetLineEnd(1, strlen(name2));
     send_string(name2);
   }
 
   //CharLCD_clearline(2);
-  CharLCD_SetLine(2); // Country of Players
-  write('(');
+  scoreboard_SetLine(2); // Country of Players
+  scoreboard_write('(');
   if(strlen(country1) > 7){
   char country1temp[10];
   strncpy(country1temp, country1, 7);
@@ -313,40 +286,40 @@ void CharLCD_Chess_Setup(char name1[], char name2[], char country1[], char count
   else{
     send_string(country1);
   }
-  write(')');
+  scoreboard_write(')');
   
   if(strlen(country2) > 7){
-  CharLCD_SetLineEnd(2, 9);
-  write('(');
+  scoreboard_SetLineEnd(2, 9);
+  scoreboard_write('(');
   char country2temp[10];
   strncpy(country2temp, country2, 7);
   country2temp[7] = '\0';
   send_string(country2temp);
   }
   else{
-    CharLCD_SetLineEnd(2, strlen(country2)+2);
-    write('(');
+    scoreboard_SetLineEnd(2, strlen(country2)+2);
+    scoreboard_write('(');
     send_string(country2);
   }
-  write(')');
+  scoreboard_write(')');
   //Need to set DDRAM to end of line 2 minus length of 2nd string
 
   //CharLCD_clearline(3); //Nothing needs to be here unless draw is offered or game is over
 
   // CharLCD_clearline(4);
-  CharLCD_SetLine(4); // Chess Rank?
+  scoreboard_SetLine(4); // Chess Rank?
   send_string(rank1);
-  CharLCD_SetLineEnd(4, strlen(rank2));
+  scoreboard_SetLineEnd(4, strlen(rank2));
   send_string(rank2);
   //Need to set DDRAM to end of line 4 minus length of 2nd string
 
 }
 
-void CharLCD_OfferDraw(bool LtR){
+void scoreboard_OfferDraw(bool LtR){
   //CharLCD_clearline(3);
-  command(0x80+0x1B);
+  scoreboard_command(0x80+0x1B);
   send_string("Draw?");
-  command(0x80+0x5B);
+  scoreboard_command(0x80+0x5B);
   if(LtR){
     send_string("---->");
   }
@@ -355,12 +328,12 @@ void CharLCD_OfferDraw(bool LtR){
   }
 }
 
-void CharLCD_DrawStatus(bool accepted){
-  command(0x5B+0x80);
+void scoreboard_DrawStatus(bool accepted){
+  scoreboard_command(0x5B+0x80);
   send_string("     ");
   
   //CharLCD_clearline(3);
-  command(0x80+0x17);
+  scoreboard_command(0x80+0x17);
   if(accepted){
     send_string("Draw Accepted");
   }
@@ -369,10 +342,10 @@ void CharLCD_DrawStatus(bool accepted){
   }
 }
 
-void CharLCD_WinUpdate(char P1wins[], char P2wins[]){
-  CharLCD_clearline(3);
-  command(0x80+0x1C);
+void scoreboard_WinUpdate(char P1wins[], char P2wins[]){
+  scoreboard_clearline(3);
+  scoreboard_command(0x80+0x1C);
   send_string(P1wins);
-  write('-');
+  scoreboard_write('-');
   send_string(P2wins);
 }
