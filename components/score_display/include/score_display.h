@@ -349,3 +349,7 @@ void scoreboard_WinUpdate(char P1wins[], char P2wins[]){
   scoreboard_write('-');
   send_string(P2wins);
 }
+
+void scoreboard_clear(){
+  scoreboard_command(0x01);
+}
