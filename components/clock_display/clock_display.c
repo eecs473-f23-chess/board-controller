@@ -41,11 +41,17 @@
  *                 Function Commands                 
  *****************************************************/
 
-void GraphicLCD_data_write(unsigned char d) // Data Output Serial Interface
+void GraphicLCD_data_write(unsigned char d, bool left) // Data Output Serial Interface
 {
   unsigned int n;
-  gpio_set_level((gpio_num_t)(CS), LOW);
-  gpio_set_level((gpio_num_t)RS, HIGH);
+  if(left){
+    gpio_set_level((gpio_num_t)(CS_C2), LOW);
+    gpio_set_level((gpio_num_t)RS_C2, HIGH);
+  }
+  else{
+    gpio_set_level((gpio_num_t)(CS_C1), LOW);
+    gpio_set_level((gpio_num_t)RS_C1, HIGH);
+  }
   for (n = 0; n < 8; n++)
   {
     if ((d & 0x80) == 0x80)
@@ -60,14 +66,26 @@ void GraphicLCD_data_write(unsigned char d) // Data Output Serial Interface
     while (0);
     gpio_set_level((gpio_num_t)SC, LOW);
   }
-  gpio_set_level((gpio_num_t)CS, HIGH);
+  if(left){
+    gpio_set_level((gpio_num_t)CS_C2, HIGH);
+  }
+  else{
+    gpio_set_level((gpio_num_t)CS_C1, HIGH);
+  }
 }
 
-void GraphicLCD_comm_write(unsigned char d) // Command Output Serial Interface
+void GraphicLCD_comm_write(unsigned char d, bool left) // Command Output Serial Interface
 {
   unsigned int n;
-  gpio_set_level((gpio_num_t)CS, LOW);
-  gpio_set_level((gpio_num_t)RS, LOW);
+  if(left){
+    gpio_set_level((gpio_num_t)CS_C2, LOW);
+    gpio_set_level((gpio_num_t)RS_C2, LOW);
+  }
+  else{
+    gpio_set_level((gpio_num_t)CS_C1, LOW);
+    gpio_set_level((gpio_num_t)RS_C1, LOW);
+  }
+  
   for (n = 0; n < 8; n++)
   {
     if ((d & 0x80) == 0x80)
@@ -82,49 +100,53 @@ void GraphicLCD_comm_write(unsigned char d) // Command Output Serial Interface
     while (0);
     gpio_set_level((gpio_num_t)SC, LOW);
   }
-  gpio_set_level((gpio_num_t)CS, HIGH);
+  if(left){
+    gpio_set_level((gpio_num_t)CS_C1, HIGH);
+  }
+  else{
+    gpio_set_level((gpio_num_t)CS_C2, HIGH);
+  }
 }
 
-void GraphicLCD_DispPic(unsigned char *lcd_string)
+void GraphicLCD_DispPic(unsigned char *lcd_string, bool left)
 {
   unsigned int i, j;
   unsigned char page = 0xB0;
-  GraphicLCD_comm_write(0xAE); // Display OFF
-  GraphicLCD_comm_write(0x40); // Display start address + 0x40
+  //GraphicLCD_comm_write(0xAE, left); // Display OFF
+  GraphicLCD_comm_write(0x40, left); // Display start address + 0x40
   for (i = 0; i < 8; i++)
   {                   // 64 pixel display / 8 pixels per page = 8 pages
-    GraphicLCD_comm_write(page); // send page address
-    GraphicLCD_comm_write(0x10); // column address upper 4 bits + 0x10
-    GraphicLCD_comm_write(0x00); // column address lower 4 bits + 0x00
+    GraphicLCD_comm_write(page, left); // send page address
+    GraphicLCD_comm_write(0x10, left); // column address upper 4 bits + 0x10
+    GraphicLCD_comm_write(0x00, left); // column address lower 4 bits + 0x00
     for (j = 0; j < 128; j++)
     {                          // 128 columns wide
-      GraphicLCD_data_write(*lcd_string); // send picture data
+      GraphicLCD_data_write(*lcd_string, left); // send picture data
       lcd_string++;
     }
     page++; // after 128 columns, go to next page
   }
-  GraphicLCD_comm_write(0xAF);
+  //GraphicLCD_comm_write(0xAF, left);
 }
 
-void GraphicLCD_ClearLCD(unsigned char *lcd_string)
+void GraphicLCD_ClearLCD(bool left)
 {
   unsigned int i, j;
   unsigned char page = 0xB0;
-  GraphicLCD_comm_write(0xAE); // Display OFF
-  GraphicLCD_comm_write(0x40); // Display start address + 0x40
+  //GraphicLCD_comm_write(0xAE, left); // Display OFF
+  GraphicLCD_comm_write(0x40, left); // Display start address + 0x40
   for (i = 0; i < 8; i++)
   {                   // 64 pixel display / 8 pixels per page = 8 pages
-    GraphicLCD_comm_write(page); // send page address
-    GraphicLCD_comm_write(0x10); // column address upper 4 bits + 0x10
-    GraphicLCD_comm_write(0x00); // column address lower 4 bits + 0x00
+    GraphicLCD_comm_write(page, left); // send page address
+    GraphicLCD_comm_write(0x10, left); // column address upper 4 bits + 0x10
+    GraphicLCD_comm_write(0x00, left); // column address lower 4 bits + 0x00
     for (j = 0; j < 128; j++)
     {                   // 128 columns wide
-      GraphicLCD_data_write(0x00); // write clear pixels
-      lcd_string++;
+      GraphicLCD_data_write(0x00, left); // write clear pixels
     }
     page++; // after 128 columns, go to next page
   }
-  GraphicLCD_comm_write(0xAF);
+  //GraphicLCD_comm_write(0xAF, left);
 }
 
 /****************************************************
@@ -134,42 +156,100 @@ void GraphicLCD_ClearLCD(unsigned char *lcd_string)
 void GraphicLCD_init_LCD()
 {
   gpio_set_direction((gpio_num_t)RES, GPIO_MODE_OUTPUT); // configure RES as output
-  gpio_set_direction((gpio_num_t)CS, GPIO_MODE_OUTPUT);  // configure CS as output
-  gpio_set_direction((gpio_num_t)RS, GPIO_MODE_OUTPUT);  // configure RS as output
+  gpio_set_direction((gpio_num_t)CS_C1, GPIO_MODE_OUTPUT);  // configure CS as output
+  gpio_set_direction((gpio_num_t)RS_C1, GPIO_MODE_OUTPUT);  // configure RS as output
   gpio_set_direction((gpio_num_t)SC, GPIO_MODE_OUTPUT);  // configure SC as output
   gpio_set_direction((gpio_num_t)SI, GPIO_MODE_OUTPUT);  // configure SI as output
+  gpio_set_direction((gpio_num_t)RS_C2, GPIO_MODE_OUTPUT);
+  gpio_set_direction((gpio_num_t)CS_C2, GPIO_MODE_OUTPUT);
   gpio_set_level((gpio_num_t)RES, LOW);
   vTaskDelay(pdMS_TO_TICKS(100));
   gpio_set_level((gpio_num_t)RES, HIGH);
   vTaskDelay(pdMS_TO_TICKS(100));
-  GraphicLCD_comm_write(0xA0); // ADC select
-  GraphicLCD_comm_write(0xAE); // Display OFF
-  GraphicLCD_comm_write(0xC8); // COM direction scan
-  GraphicLCD_comm_write(0xA2); // LCD bias set
-  GraphicLCD_comm_write(0x2F); // Power Control set
-  GraphicLCD_comm_write(0x26); // Resistor Ratio Set
-  GraphicLCD_comm_write(0x81); // Electronic Volume Command (set contrast) Double Byte: 1 of 2
-  GraphicLCD_comm_write(0x11); // Electronic Volume value (contrast value) Double Byte: 2 of 2
-  GraphicLCD_comm_write(0xAF); // Display ON
+
+  //Clock 1
+
+  GraphicLCD_comm_write(0xA0, true); // ADC select
+  GraphicLCD_comm_write(0xAE, true); // Display OFF
+  GraphicLCD_comm_write(0xC8, true); // COM direction scan
+  GraphicLCD_comm_write(0xA2, true); // LCD bias set
+  GraphicLCD_comm_write(0x2F, true); // Power Control set
+  GraphicLCD_comm_write(0x26, true); // Resistor Ratio Set
+  GraphicLCD_comm_write(0x81, true); // Electronic Volume Command (set contrast) Double Byte: 1 of 2
+  GraphicLCD_comm_write(0x11, true); // Electronic Volume value (contrast value) Double Byte: 2 of 2
+  GraphicLCD_comm_write(0xAF, true); // Display ON
+
+  //Clock 2
+
+  GraphicLCD_comm_write(0xA0, false); // ADC select
+  GraphicLCD_comm_write(0xAE, false); // Display OFF
+  GraphicLCD_comm_write(0xC8, false); // COM direction scan
+  GraphicLCD_comm_write(0xA2, false); // LCD bias set
+  GraphicLCD_comm_write(0x2F, false); // Power Control set
+  GraphicLCD_comm_write(0x26, false); // Resistor Ratio Set
+  GraphicLCD_comm_write(0x81, false); // Electronic Volume Command (set contrast) Double Byte: 1 of 2
+  GraphicLCD_comm_write(0x11, false); // Electronic Volume value (contrast value) Double Byte: 2 of 2
+  GraphicLCD_comm_write(0xAF, false); // Display ON
+  GraphicLCD_ClearLCD(true);
+  GraphicLCD_ClearLCD(false);
 }
 
-void GraphicLCD_DispNHDPic(int hour, int min_tens, int min_ones, int sec_tens, int sec_ones)
+void GraphicLCD_DispClock(int hour, int min_tens, int min_ones, int sec_tens, int sec_ones, bool left)
 {
   unsigned char mask[1024];
   for(int i = 0; i <1024; ++i){
     mask[i] = (hours[hour])[i] | (minutes_ones[min_ones])[i] | Colons[i] | (minutes_tens[min_tens])[i] | (seconds_ones[sec_ones])[i] | (seconds_tens[sec_tens])[i];
   }
-  GraphicLCD_DispPic(mask);
+  GraphicLCD_DispPic(mask, left);
 }
 
 
-// vTaskDelay(pdMS_TO_TICKS(1000));
+// GraphicLCD_init_LCD();
+//     vTaskDelay(pdMS_TO_TICKS(1000));
 //     int hours = 0;
-//     int tens_minutes = 1;
-//     int ones_minutes = 0;
+//     int tens_minutes = 0;
+//     int ones_minutes = 1;
 //     int tens_seconds = 0;
 //     int ones_seconds = 1;
 //     //While loop is for clock logic
+//     while(hours + tens_minutes +tens_seconds +ones_minutes + ones_seconds != 3){
+//         if(ones_seconds == 0){
+//             ones_seconds = 9;
+//             if(tens_seconds == 0){
+//                 tens_seconds = 5;
+//                 if(ones_minutes == 0){
+//                     ones_minutes = 9;
+//                     if(tens_minutes == 0 && hours !=0){
+//                         tens_minutes = 5;
+//                         hours -= 1;
+//                     }
+//                     else{
+//                         tens_minutes -= 1;
+//                     }
+                    
+//                 }
+//                 else{
+//                     ones_minutes -= 1;
+//                 }
+//             }
+//             else{
+//                 tens_seconds -= 1;
+//             }
+//         }
+//         else{
+//             ones_seconds -=1;
+//         }
+//         vTaskDelay(pdMS_TO_TICKS(1000));
+//         GraphicLCD_DispClock(hours, tens_minutes, ones_minutes, tens_seconds, ones_seconds, true);
+//         //vTaskDelay(pdMS_TO_TICKS(500));
+//     }
+
+//     hours = 0;
+//     tens_minutes = 0;
+//     ones_minutes = 1;
+//     tens_seconds = 0;
+//     ones_seconds = 1;
+
 //     while(hours + tens_minutes +tens_seconds +ones_minutes + ones_seconds != 0){
 //         if(ones_seconds == 0){
 //             ones_seconds = 9;
@@ -198,4 +278,6 @@ void GraphicLCD_DispNHDPic(int hour, int min_tens, int min_ones, int sec_tens, i
 //             ones_seconds -=1;
 //         }
 //         vTaskDelay(pdMS_TO_TICKS(1000));
-//         GraphicLCD_DispNHDPic(hours, tens_minutes, ones_minutes, tens_seconds, ones_seconds);
+//         GraphicLCD_DispClock(hours, tens_minutes, ones_minutes, tens_seconds, ones_seconds, false);
+//         //vTaskDelay(pdMS_TO_TICKS(500));
+//     }
