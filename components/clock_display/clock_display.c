@@ -213,6 +213,21 @@ void GraphicLCD_DispClock(int ms, bool left)
   GraphicLCD_DispPic(mask, left);
 }
 
+void decrement_time(void * pvParameters){
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  while(1){
+    if(our_turn && P1_time != 0){
+      P1_time -= 1000;
+      GraphicLCD_DispClock(P1_time, our_turn);
+    }
+    else if(!our_turn && P2_time != 0){
+      P2_time -= 1000;
+      GraphicLCD_DispClock(P2_time, our_turn);
+    }
+    vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
+  }
+}
+
 
 
 // GraphicLCD_init_LCD();

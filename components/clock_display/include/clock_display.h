@@ -15,6 +15,9 @@
 #define HIGH 1
 
 // unsigned char NHD[];
+extern int P1_time;
+extern int P2_time;
+extern bool our_turn;
 
 void GraphicLCD_data_write(unsigned char d, bool left);
 void GraphicLCD_comm_write(unsigned char d, bool left);
@@ -22,3 +25,4 @@ void GraphicLCD_DispPic(unsigned char *lcd_string, bool left);
 void GraphicLCD_ClearLCD(bool left);
 void GraphicLCD_init_LCD();
 void GraphicLCD_DispClock(int ms, bool left);
+void decrement_time(void * pvParameters);
