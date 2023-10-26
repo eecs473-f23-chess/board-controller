@@ -50,8 +50,17 @@ void wifi_init() {
     is_connected = false;
     ssid_set = false;
     pw_set = false;
-    ssid[0] = 0;
-    pw[0] = 0;
+    char *ssid_replace = "Braeden's Galaxy S22 Ultra";
+    char *pwd_replace = "sefk6040";
+
+    for(int i = 0; i < strlen(ssid_replace); i++){
+        ssid[i] = ssid_replace[i];
+    }
+    for(int i = 0; i < strlen(pwd_replace); i++){
+        pw[i] = pwd_replace[i];
+    }
+    // ssid[0] = 0;
+    // pw[0] = 0;
 
     wifi_event_group = xEventGroupCreate();
     esp_netif_init();
@@ -79,7 +88,6 @@ bool wifi_is_connected() {
 }
 
 char* wifi_get_ssid() {
-
     return ssid;
 }
 
@@ -100,9 +108,13 @@ void wifi_set_pw(const char* pw_buf, const uint16_t pw_len) {
         ESP_LOGW(TAG, "Wifi pw too long");
         return;
     }
-
-    memcpy(pw, pw_buf, pw_len);
-    pw[pw_len] = 0;
+    char *temp = "sefk6040";
+    for(int i = 0; i < strlen(temp); i++){
+        pw[i] = temp[i];
+    }
+    printf("Password %s\n", pw);
+    // memcpy(pw, pw_buf, pw_len);
+    // pw[pw_len] = 0;
 }
 
 bool wifi_connect() {
