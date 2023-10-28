@@ -181,17 +181,17 @@ void scoreboard_init(){
   vTaskDelay(pdMS_TO_TICKS(3));
   gpio_set_level(E, LOW);
 	vTaskDelay(pdMS_TO_TICKS(5)); //First 
-  printf("First Done\n");
+  // printf("First Done\n");
   scoreboard_command(0x28);
 	//Delayms(5); // Second done
-  printf("Second Done\n");
+  // printf("Second Done\n");
   scoreboard_command(0x28);
 	//Delayms(5); // Third done
-  printf("Third Done\n");
+  // printf("Third Done\n");
   scoreboard_command(0xE);
   //Fourth Done
   //Delayms(10);
-  printf("Fourth Done\n");
+  // printf("Fourth Done\n");
   //Delayms(10);
 	scoreboard_command(0x1);
   //Delayms(10);

@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h> 
 #include <cJSON.h>
+#include "../clock_display/include/clock_display.h"
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
 #define AUTHORIZATION_HEADER    "Authorization"
@@ -14,7 +15,7 @@
 
 static char GAME_ID[100] = {};
 static char last_move_played_by_opponent[5] = {};
-static char response_buf[3000] = {};
+static char response_buf[2000] = {};
 static char color[10] = {};
 static char user_name[100] = {};
 static char bearer_token[64] = {};
@@ -115,10 +116,15 @@ char* getColor(){
 void set_username(const char *json_str){
     cJSON *root = cJSON_Parse(json_str);    
     if (root == NULL) {
-        printf("Error parsing JSON.\n");
+        printf("{set_username} Error parsing JSON.\n");
         return;
     }
     cJSON *user = cJSON_GetObjectItem(root, "username");
+    if(user == NULL){
+        printf("{set_username} username isn't defined in root\n");
+        cJSON_Delete(root);
+        return;
+    }
     for(int i = 0; i < strlen(user->valuestring); i++){
         user_name[i] = (user->valuestring)[i];
     }  
@@ -177,15 +183,14 @@ bool lichess_api_is_logged_in() {
 void set_game_id(const char *json_str) {
     cJSON *root = cJSON_Parse(json_str);    
     if (root == NULL) {
-        printf("Error parsing JSON.\n");
+        printf("{set game id} ROOT JSON IS NULL.\n");
         return;
     }
     cJSON *game = cJSON_GetObjectItem(root, "game");
     cJSON *gameId = cJSON_GetObjectItem(game, "gameId");
     for(int i = 0; i < strlen(gameId->valuestring); i++){
         GAME_ID[i] = (gameId->valuestring)[i];
-    }  
-    printf("Game ID %s\n", GAME_ID);
+    }
     cJSON_Delete(root);
 }
 
@@ -199,49 +204,61 @@ void set_color(const char *json_str) {
     cJSON *c = cJSON_GetObjectItem(game, "color");
     for(int i = 0; i < strlen(c->valuestring); i++){
         color[i] = (c->valuestring)[i];
-    }  
+    }
     cJSON_Delete(root);
 }
 
+
+// TODO, CHECK CJSON DELETES FOR THESE GUYS
 void set_last_move_played_by_opponent(char* json){
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
-        printf("ERROR PARSING JSON\n");
+        printf("{set_last_move_played_by_opponent} ERROR PARSING JSON\n");
         return;
     }
-    // TODO, based off stream board game state
     cJSON *type = cJSON_GetObjectItem(root, "type");
     cJSON *moves = NULL;
     if(strcmp(type->valuestring,"gameFull") == 0){
         cJSON *state = cJSON_GetObjectItem(root, "state");
-        moves = cJSON_GetObjectItem(state, "moves");
-        
+        moves = cJSON_GetObjectItem(state, "moves");        
     }
     else if(strcmp(type->valuestring,"gameState") == 0){
         moves = cJSON_GetObjectItem(root, "moves");
     }
     else{
+        printf("{set_last_move_played_by_opponent} Type isn't gameState of gameFull\n");
+        cJSON_Delete(root);    
         return;
     }
     char* full_moves = moves->valuestring;
     int n = strlen(full_moves);
-    for(int i = n-4; i < n; i++){
-        last_move_played_by_opponent[i-n+4] = full_moves[i];
+    if(n == 0){
+        last_move_played_by_opponent[0] = 'N';
+        last_move_played_by_opponent[1] = '/';
+        last_move_played_by_opponent[2] = 'A';
     }
+    else{
+        for(int i = n-4; i < n; i++){
+            last_move_played_by_opponent[i-n+4] = full_moves[i];
+        }
+    }
+    cJSON_Delete(root);
 }
 
+// TODO, check cJSON_DELETE FOR THESE GUYS
 char* check_result_of_game(char *json){
     char* game_in_progress = "GAME IN PROGRESS";
     char* white_resigned = "0-1 (Black wins)";
     char* black_resigned = "1-0 (White wins)";
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
-        printf("check_result_of_game ERROR PARSING JSON\n");
+        printf("{check_result_of_game} ERROR PARSING JSON\n");
         return NULL;
     }
     cJSON *type = cJSON_GetObjectItem(root, "type");
     if(type == NULL){
-        printf("Type error in check result\n");
+        printf("{check_result_of_game} Type error in check result\n");
+        cJSON_Delete(root);
         return NULL;
     }
     cJSON *status = NULL;
@@ -249,7 +266,9 @@ char* check_result_of_game(char *json){
     if(strcmp(type->valuestring, "gameFull") == 0){
         status = cJSON_GetObjectItem(root, "state");
         if(status == NULL){
-            printf("Status is null in get result\n");
+            printf("{check_result_of_game} Status is null\n");
+            cJSON_Delete(root);
+            return NULL;
         }
     }
     else if(strcmp(type->valuestring, "gameState") == 0) {
@@ -263,7 +282,7 @@ char* check_result_of_game(char *json){
             printf("White has offered a draw!\n");
         }
         if(status == NULL){
-            printf("Status is null in get result\n");
+            printf("{check_result_of_game} Status is null in get result\n");
         }
         game_status = status->valuestring;
     }
@@ -271,52 +290,54 @@ char* check_result_of_game(char *json){
         cJSON* text = cJSON_GetObjectItem(root, "text");
         char* firstOption = "Draw offer accepted";
         if(strcmp(firstOption, text->valuestring) == 0){
+            cJSON_Delete(root);
             return "1/2 - 1/2. Game drawn";
         }
         else{
-            return text->valuestring;
+            char* txtVal = text->valuestring;
+            cJSON_Delete(root);
+            return txtVal;
         }
     }
     if(strcmp(type->valuestring, "gameFull") == 0){
         cJSON* real_status = cJSON_GetObjectItem(status, "status");
         game_status = real_status->valuestring;
     }
-
     if(game_status == NULL){
-        printf("Game status is null\n");
+        printf("{check_result_of_game} Game status is null\n");
+        cJSON_Delete(root);
         return NULL;
     }
-    // printf("Game status value %s\n", game_status);
     if(strcmp(game_status, "started") == 0){
-        // TODO, integrate draw offers
+        cJSON_Delete(root);
         return game_in_progress;
     }
     else if(strcmp(game_status, "resign") == 0 || strcmp(game_status, "mate") == 0){
         cJSON *winner = cJSON_GetObjectItem(root, "winner");
         char* winner_str = winner->valuestring;
         if(strcmp(winner_str, "white") == 0){
+            cJSON_Delete(root);
             return black_resigned;
         }
         if(strcmp(winner_str, "black") == 0){
+            cJSON_Delete(root);
             return white_resigned;
         }
     }
-    return "ERROR IN check_result_of_game";
-    
+    cJSON_Delete(root);
+    return "{check_result_of_game} DIDNT RETURN ANYTHING";    
 }
 
 char* get_last_move_played_by_opponent(){
     return last_move_played_by_opponent;
 }
 
-// TODO, convert seconds to HOUR: MINUTE: SECOND format
 void set_clock_time(char *json){
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
         printf("ERROR in set_clock_time\n");
         return;
     }
-    // TODO, based off stream board game state
     cJSON *type = cJSON_GetObjectItem(root, "type");
 
     if(strcmp(type->valuestring, "gameFull") == 0){
@@ -333,10 +354,10 @@ void set_clock_time(char *json){
         black_time = btime->valueint;
     }
     else{
-        return;
+        printf("{set_clock_time} Type isn't gameState of gameFull\n");
     }
+    cJSON_Delete(root);
 }
-
 
 char* lichess_api_get_username() {
     return user_name;
@@ -424,6 +445,8 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             printf("Official last move: %s\n", get_last_move_played_by_opponent());
             printf("White has %lu time\n", white_time);
             printf("Black has %lu time\n", black_time);
+            GraphicLCD_DispClock(white_time, true);
+            GraphicLCD_DispClock(black_time, false);
         }
     }
     vTaskDelete(NULL);
@@ -467,10 +490,6 @@ void lichess_api_make_move(char user_move[]) {
     }
 }
 
-/*
-    "Stream the events reaching a lichess user in real time as ndjson.
-    An empty line is sent every 6 seconds for keep alive purposes." - Lichess Documentation
-*/
 void lichess_api_stream_event() {
     if (!logged_in) {
         return;

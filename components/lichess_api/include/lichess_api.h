@@ -17,9 +17,6 @@ void lichess_api_make_move(char* move);
 void lichess_api_stream_move_of_game();
 void lichess_api_stream_event(void);
 void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment);
-// TODO, DELETE THIS
-void set_game_id(const char* test_json);
-// TODO, DELETE ABOVE^
 char* getColor();
 char* lichess_api_get_username();
 bool get_opponent_move_update();
