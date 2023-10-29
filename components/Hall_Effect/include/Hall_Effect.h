@@ -8,6 +8,9 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_continuous.h"
 
+#define POSITIVE 1200
+#define NEGATIVE 800
+
 int Get_Magnetic();
 
 void ADC_setup();

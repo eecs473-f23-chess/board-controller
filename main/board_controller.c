@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "Hall_Effect.h"
 
+char board[8][8];
+
 void app_main(void)
 {
     // adc_oneshot_unit_handle_t hall_effect;
@@ -28,24 +30,13 @@ void app_main(void)
     // // printf("Pin: %d", gpio);
     ADC_setup();
 
-    while(1){
-        select_xy_sensor(0,0);
-        int reading = Get_Magnetic();
-        // int reading;
-        // adc_oneshot_get_calibrated_result(hall_effect, cali, ADC_CHANNEL_0, &reading);
-        printf("Volts: Channel 0: %d", reading);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        select_xy_sensor(0,1);
-        reading = Get_Magnetic();
-        // int reading;
-        // adc_oneshot_get_calibrated_result(hall_effect, cali, ADC_CHANNEL_0, &reading);
-        printf("      Channel 1: %d\n", reading);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        select_xy_sensor(7,1);
-        reading = Get_Magnetic();
-        // int reading;
-        // adc_oneshot_get_calibrated_result(hall_effect, cali, ADC_CHANNEL_0, &reading);
-        printf("      Board 7: %d\n", reading);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
+    // poll_board(board);
+
+    // for(int i = 0; i < 8; i++){
+    //     for(int j = 0; j < 8; j++){
+    //         printf("%d", board[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+
 }

@@ -3,7 +3,7 @@
 
 adc_oneshot_unit_handle_t hall_effect; //ADC setup stuff
 adc_cali_handle_t cali;
-char board[8][8]; //State of the board
+ //State of the board
 
 struct coordinate{
     int x;
@@ -138,11 +138,34 @@ void set_Square_Mux(int i){ //Selects which channel the second mux will look at
 }
 
 void select_xy_sensor(int x, int y){ //Selects a specific hall effect sensor to look at
+    if(y == 0){
+        set_Square_Mux(2);
+    }
+    else if(y == 1){
+        set_Square_Mux(4);
+    }
+    else if(y == 2){
+        set_Square_Mux(1);
+    }
+    else if(y == 3){
+        set_Square_Mux(6);
+    }
+    else if(y == 4){
+        set_Square_Mux(0);
+    }
+    else if(y == 5){
+        set_Square_Mux(7);
+    }
+    else if(y == 6){
+        set_Square_Mux(3);
+    }
+    else if(y == 7){
+        set_Square_Mux(5);
+    }
     set_Board_Mux(x);
-    set_Square_Mux(y);
 }
 
-void poll_board(){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
+void poll_board(char board[8][8]){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
                    // coordinates have changed, and from what
     int index = 0;
     int reading;
@@ -150,7 +173,7 @@ void poll_board(){ // Polls the entire board, reading each hall effect sensor an
         for(int j = 0; j < 8; ++j){
             select_xy_sensor(i, j);
             reading = Get_Magnetic(hall_effect);
-            if(reading > 1500){
+            if(reading > POSITIVE){
                 if(board[i][j] != 'b'){
                     struct coordinate change;
                     change.x = i;
@@ -161,7 +184,7 @@ void poll_board(){ // Polls the entire board, reading each hall effect sensor an
                 }
                 board[i][j] = 'b';
             }
-            else if(reading < 500){
+            else if(reading < NEGATIVE){
                 if(board[i][j] != 'w'){
                     struct coordinate change;
                     change.x = i;
