@@ -646,7 +646,7 @@ bool lichess_api_is_logged_in() {
 
 void lichess_api_resign_game(){
     const char* TAG = "LICHESS_RESIGN_GAME";
-    char* URL = "https://lichess.org/api/board/game/";
+    char URL[100] = "https://lichess.org/api/board/game/";
     strcat(URL, GAME_ID);
     strcat(URL, "/resign");
     esp_http_client_set_url(client, URL);
@@ -664,7 +664,7 @@ void lichess_api_resign_game(){
 
 void lichess_api_handle_draw(){
     const char* TAG = "LICHESS_HANDLE_DRAW";
-    char* URL = "https://lichess.org/api/board/game/";
+    char URL[100] = "https://lichess.org/api/board/game/";
     strcat(URL, GAME_ID);
     strcat(URL, "/draw");
     strcat(URL, "yes");
