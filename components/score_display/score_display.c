@@ -46,22 +46,6 @@ Might need to rewrite the data and command send functions, check when we get the
 */
 
 
-#include "driver/gpio.h"
-#include "freertos/FreeRTOS.h"
-#include <stdio.h>
-#include "freertos/timers.h"
-#include <string.h>
-#include "freertos/task.h"
-
-#define RS  (gpio_num_t)13  //13
-#define E   (gpio_num_t)14 //6
-#define LOW 0
-#define HIGH 1
-#define DB4 (gpio_num_t)21  //21
-#define DB5 (gpio_num_t)47//47
-#define DB6 (gpio_num_t)48 //48
-#define DB7 (gpio_num_t)45 //45
-
 //---------------------------------------------------------
 /*
 8_bit_character.c
