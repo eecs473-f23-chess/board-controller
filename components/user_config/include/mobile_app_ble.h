@@ -1,0 +1,1 @@
+void mobile_app_ble_init(void);
