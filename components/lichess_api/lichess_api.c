@@ -7,7 +7,9 @@
 #include <stdbool.h>
 #include <string.h> 
 #include <cJSON.h>
-#include "../clock_display/include/clock_display.h"
+
+#include "../clock_display/include/clock_display.h"     
+#include "../score_display/include/score_display.h"
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
 #define AUTHORIZATION_HEADER    "Authorization"
@@ -18,14 +20,21 @@ static char last_move_played_by_opponent[5] = {};
 static char response_buf[2000] = {};
 static char color[10] = {};
 static char user_name[100] = {};
+static char rating[5] = {};
+static char country[5] = {};
 static char bearer_token[64] = {};
 static bool logged_in;
 static bool move_update = false;
 static bool want_moves = false;
+static bool draw_has_been_offered = false;
 static uint32_t white_time = -1;
 static uint32_t black_time = -1;
+static char opponent_username[100] = {};
+static char opponent_rating[5] = {};
+static char opponent_country[5] = {};
 static esp_http_client_handle_t client;
 static esp_http_client_handle_t client_stream;
+
 
 
 esp_err_t _http_event_handler(esp_http_client_event_t *evt)
@@ -55,7 +64,6 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
              *  However, event handler can also be used in case chunked encoding is used.
              */
             if (!esp_http_client_is_chunked_response(evt->client)) {
-                printf("Data not chunked\n");
                 // If user_data buffer is configured, copy the response into the buffer
                 int copy_len = 0;
                 if (evt->user_data) {
@@ -100,7 +108,6 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-
 static esp_http_client_config_t config = {
         .url = "https://lichess.org/api/",
         .path = "/get",
@@ -127,56 +134,37 @@ void set_username(const char *json_str){
     }
     for(int i = 0; i < strlen(user->valuestring); i++){
         user_name[i] = (user->valuestring)[i];
-    }  
+    }
     cJSON_Delete(root);
 }
 
-void lichess_api_get_account_info(void){
-    const char* TAG = "LICHESS_ACCOUNT_INFO";
-    esp_http_client_set_url(client, "https://lichess.org/api/account");
-    esp_http_client_set_method(client, HTTP_METHOD_GET);    
-    esp_http_client_set_header(client, "Content-Type", "application/json");
-    esp_err_t err = esp_http_client_perform(client);
-    // ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
-
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
-                esp_http_client_get_status_code(client),
-                esp_http_client_get_content_length(client));
-    } else {
-        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+void set_rating(char *json){
+    cJSON *root = cJSON_Parse(json);    
+    if (root == NULL) {
+        printf("{set_rating} Error parsing JSON.\n");
+        return;
     }
-
-    set_username(response_buf);
-
-}
-
-void lichess_api_init_client(void) {
-    static const char* TAG = "LICHESS_INIT";
-    client = esp_http_client_init(&config);
-    logged_in = false;
-    ESP_LOGI(TAG, "Complete");
-}
-
-// TODO, REPLACE THIS BACK
-void lichess_api_login(const char* token, const uint16_t token_len) {
-    strcpy(bearer_token, "Bearer ");
-    // strncat(bearer_token, token, token_len);
-    const char* replace = "lip_w2grwolW4y407Qjj0DWz";
-    size_t len = strlen(replace) + 1;
-    strncat(bearer_token, replace, len);
-    printf("Bearer token %s\n", bearer_token);
-    esp_http_client_set_header(client, "Authorization", bearer_token);
-    logged_in = true;
-}
-
-void lichess_api_logout() {
-    esp_http_client_delete_header(client, AUTHORIZATION_HEADER);
-    logged_in = false;
-}
-
-bool lichess_api_is_logged_in() {
-    return logged_in;
+    cJSON *per = cJSON_GetObjectItem(root, "perfs");
+    if(per == NULL){
+        printf("{set_rating} per isn't defined\n");
+        cJSON_Delete(root);
+        return;
+    }
+    cJSON *rap = cJSON_GetObjectItem(per, "rapid");
+    if(rap == NULL){
+        printf("{set_rating} rapid isn't defined in root\n");
+        cJSON_Delete(root);
+        return;
+    }
+    cJSON *rat = cJSON_GetObjectItem(rap, "rating");
+     if(rat == NULL){
+        printf("{set_rating} rating isn't defined in root\n");
+        cJSON_Delete(root);
+        return;
+    }
+    int actual_rapid_rating = rat->valueint;
+    sprintf(rating, "%d", actual_rapid_rating);
+    cJSON_Delete(root);
 }
 
 // TODO, Make it one function so we can parse it once. 
@@ -208,8 +196,6 @@ void set_color(const char *json_str) {
     cJSON_Delete(root);
 }
 
-
-// TODO, CHECK CJSON DELETES FOR THESE GUYS
 void set_last_move_played_by_opponent(char* json){
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
@@ -245,7 +231,6 @@ void set_last_move_played_by_opponent(char* json){
     cJSON_Delete(root);
 }
 
-// TODO, check cJSON_DELETE FOR THESE GUYS
 char* check_result_of_game(char *json){
     char* game_in_progress = "GAME IN PROGRESS";
     char* white_resigned = "0-1 (Black wins)";
@@ -276,10 +261,12 @@ char* check_result_of_game(char *json){
         cJSON* draw_potentialb = cJSON_GetObjectItem(root, "bdraw");
         if(draw_potentialb != NULL){
             printf("Black has offered a draw!\n");
+            scoreboard_OfferDraw(true);
         }
         cJSON* draw_potentialw = cJSON_GetObjectItem(root, "wdraw");
         if(draw_potentialw != NULL){
             printf("White has offered a draw!\n");
+            scoreboard_OfferDraw(false);
         }
         if(status == NULL){
             printf("{check_result_of_game} Status is null in get result\n");
@@ -362,9 +349,332 @@ void set_clock_time(char *json){
 char* lichess_api_get_username() {
     return user_name;
 }
-/*
-    game_id: ID of the game being played
-*/
+
+bool get_opponent_move_update(){
+    return move_update;
+}
+
+void reset_opponent_move_update(){
+    move_update = false;
+}
+
+void set_opponent_username_and_rating(char* json){
+    cJSON *root = cJSON_Parse(json);
+    cJSON *game_all = cJSON_GetObjectItem(root, "game");
+    cJSON *opponent_all = cJSON_GetObjectItem(game_all, "opponent");
+    if(opponent_all == NULL){
+        printf("{set_opponent_username_and_rating} json doesn't have opponent information\n");
+        cJSON_Delete(root);
+        return;
+    }
+    cJSON *opponent_user = cJSON_GetObjectItem(opponent_all, "username");
+    cJSON *opponent_rater = cJSON_GetObjectItem(opponent_all, "rating");
+    if(opponent_user == NULL){
+        printf("{set_opponent_username_and_rating} opponent_all doesn't have opponent username in json\n");
+        cJSON_Delete(root);
+        return;
+    }
+    if(opponent_rater == NULL){
+        printf("{set_opponent_username_and_rating} opponent_all doesn't have opponent rating in json\n");
+        cJSON_Delete(root);
+        return;
+    }
+    char* opponent_actual_name = opponent_user->valuestring;
+    uint32_t opponent_actual_rating = opponent_rater->valueint;
+
+    int n = strlen(opponent_actual_name);
+    for(int i = 0; i < n; i++){
+        opponent_username[i] = opponent_actual_name[i];
+    }
+    sprintf(opponent_rating, "%ld", opponent_actual_rating);
+    cJSON_Delete(root);
+}
+
+void set_user_country(char* username){
+    char URL[100] = "https://lichess.org/api/user/";
+    strcat(URL, username);
+    esp_http_client_set_url(client, URL);
+    esp_http_client_set_method(client, HTTP_METHOD_GET);
+    esp_http_client_set_header(client, "Authorization", bearer_token);
+    const char* TAG = "LICHESS_COUNTRY";
+    
+    // GET
+    esp_err_t err = esp_http_client_perform(client);
+    ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
+
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
+    } else {
+        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+    }
+
+    bool me = false;
+    if(strcmp(user_name, username) == 0){
+        me = true;
+    }
+
+    char* json = response_buf;
+    cJSON* root = cJSON_Parse(json);
+    if(root == NULL){
+        printf("{get_user_country} Root json is null");
+        return;
+    }
+    cJSON* profiler = cJSON_GetObjectItem(root, "profile");
+    if(profiler == NULL){
+        printf("{get_user_country} Profile json is null");
+        cJSON_Delete(root);
+        return;
+    }
+    cJSON* countrY = cJSON_GetObjectItem(profiler, "country");
+    if(countrY == NULL){
+        printf("{get_user_country} %s didn't have country set\n", username);
+        cJSON_Delete(root);
+        char* countryna = "N/A";
+        if(me){
+            country[0] = 'N';
+            country[1] = '/';
+            country[2] = 'A';
+        }
+        else{
+            opponent_country[0] = 'N';
+            opponent_country[1] = '/';
+            opponent_country[2] = 'A';
+        }
+    }
+    char* COUNTRY = countrY->valuestring;
+    int n = strlen(COUNTRY);
+    for(int i = 0; i < n; i++){
+        if(me){
+            country[i] = COUNTRY[i];
+        }
+        else{
+            opponent_country[i] = COUNTRY[i];
+        }
+    }
+    cJSON_Delete(root);
+}
+
+
+void lichess_api_make_move(char user_move[]) {
+    // TODO, remove this comment after
+    // if (!logged_in) {
+    //     return;
+    // }
+
+    char URL[100] = "https://lichess.org/api/board/game/";
+    char move[10] = "/move/";
+    strcat(URL, GAME_ID);
+    strcat(URL, move);
+    strcat(URL, user_move);
+    esp_http_client_set_url(client, URL);
+    esp_http_client_set_method(client, HTTP_METHOD_POST);
+    const char* TAG = "LICHESS_POST_MOVE";
+
+    esp_err_t err = esp_http_client_perform(client);
+    ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
+    } else {
+        ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+    }
+}
+
+void lichess_api_stream_event() {
+    if (!logged_in) {
+        return;
+    }
+
+    static char stream_data[550] = {};
+    static esp_http_client_config_t config_stream = {
+        .url = "https://lichess.org/api/stream/event",
+        .path = "/get",
+        .transport_type = HTTP_TRANSPORT_OVER_TCP,
+        .event_handler = _http_event_handler,
+        .user_data = stream_data,
+    };
+
+    client_stream = esp_http_client_init(&config_stream);
+    esp_http_client_set_header(client_stream, AUTHORIZATION_HEADER, bearer_token);
+    esp_http_client_set_method(client_stream, HTTP_METHOD_GET);
+    esp_http_client_open(client_stream, 0);
+    esp_http_client_fetch_headers(client_stream);
+
+    printf("Stream event once Response code %d\n", esp_http_client_get_status_code(client_stream));
+    esp_http_client_read(client_stream, stream_data, 550);
+    printf("%s\n", stream_data);
+    set_game_id(stream_data);
+    set_color(stream_data);
+    set_opponent_username_and_rating(stream_data);
+    printf("My username: %s\n", user_name);
+    printf("My rating %s\n", rating);
+    printf("My country %s\n", country);
+
+    printf("Opponent username: %s\n", opponent_username);
+    printf("Opponent rating: %s\n", opponent_rating);
+    printf("Opponent country %s\n", opponent_country);
+
+    scoreboard_Chess_Setup(user_name, opponent_username, country, opponent_country, rating, opponent_rating);
+    printf("GAME ID: %s\n", GAME_ID);
+}
+
+void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
+    if (!logged_in) {
+        return;
+    }
+
+    if(minutes <= 0){
+        printf("ERROR, MINUTES MUST BE >= 1");
+        return;
+    }    
+    char FULL_PARAMS[1000] = {};
+    char URL[100] = "https://lichess.org/api/board/seek";
+    rated ? strcat(FULL_PARAMS, "rated=true&") : strcat(FULL_PARAMS, "rated=false&");
+
+    char fullMin[100] = "time=";
+
+    int min_size = (int)((ceil(log10(minutes))+1)*sizeof(char));
+
+    char min_as_string[min_size];
+    sprintf(min_as_string, "%d", minutes);
+    strcat(fullMin, min_as_string);
+    strcat(FULL_PARAMS, fullMin);
+
+
+    strcat(FULL_PARAMS, "&variant=standard");
+    
+    esp_http_client_set_url(client, URL);
+    esp_http_client_set_method(client, HTTP_METHOD_POST);
+    esp_http_client_set_post_field(client, FULL_PARAMS, strlen(FULL_PARAMS));
+    esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
+    
+
+    const char* TAG = "LICHESS_CREATE_GAME";
+    printf("Full params length: %d\n", strlen(FULL_PARAMS));
+    esp_err_t err = esp_http_client_perform(client);
+    printf("Response code %d\n", esp_http_client_get_status_code(client));
+
+    ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
+    } else {
+        ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+    }
+
+    lichess_api_stream_event();
+}
+
+void lichess_api_get_email(void)
+{
+    if (!logged_in) {
+        return;
+    }
+
+    esp_http_client_set_url(client, "https://lichess.org/api/account/email");
+    esp_http_client_set_method(client, HTTP_METHOD_GET);
+    esp_http_client_set_header(client, "Authorization", bearer_token);
+    const char* TAG = "LICHESS_EMAIL";
+    
+    // GET
+    esp_err_t err = esp_http_client_perform(client);
+    ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
+
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
+    } else {
+        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+    }
+}
+
+
+void lichess_api_get_account_info(void){
+    const char* TAG = "LICHESS_ACCOUNT_INFO";
+    esp_http_client_set_url(client, "https://lichess.org/api/account");
+    esp_http_client_set_method(client, HTTP_METHOD_GET);    
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_err_t err = esp_http_client_perform(client);
+    // ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
+
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
+    } else {
+        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+    }
+    set_username(response_buf);
+    printf("My username is %s\n", user_name);
+    set_rating(response_buf);
+    printf("My rating is %s\n", rating);
+}
+
+void lichess_api_init_client(void) {
+    static const char* TAG = "LICHESS_INIT";
+    client = esp_http_client_init(&config);
+    logged_in = false;
+    ESP_LOGI(TAG, "Complete");
+}
+
+// TODO, REPLACE THIS BACK
+void lichess_api_login(const char* token, const uint16_t token_len) {
+    strcpy(bearer_token, "Bearer ");
+    // strncat(bearer_token, token, token_len);
+    const char* replace = "lip_EFm5BNTU3XP4nvczcv1a";
+    size_t len = strlen(replace) + 1;
+    strncat(bearer_token, replace, len);
+    printf("Bearer token %s\n", bearer_token);
+    esp_http_client_set_header(client, "Authorization", bearer_token);
+    lichess_api_get_account_info();
+    logged_in = true;
+}
+
+void lichess_api_logout() {
+    esp_http_client_delete_header(client, AUTHORIZATION_HEADER);
+    logged_in = false;
+}
+
+bool lichess_api_is_logged_in() {
+    return logged_in;
+}
+
+void lichess_api_resign_game(){
+    const char* TAG = "LICHESS_RESIGN_GAME";
+    char* URL = "https://lichess.org/api/board/game/";
+    strcat(URL, GAME_ID);
+    strcat(URL, "/resign");
+    esp_http_client_set_url(client, URL);
+    esp_http_client_set_method(client, HTTP_METHOD_POST);    
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_err_t err = esp_http_client_perform(client);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
+    } else {
+        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+    }
+}
+
+void lichess_api_handle_draw(){
+    const char* TAG = "LICHESS_HANDLE_DRAW";
+    char* URL = "https://lichess.org/api/board/game/";
+    strcat(URL, GAME_ID);
+    strcat(URL, "/draw");
+    strcat(URL, "yes");
+
+    esp_http_client_set_url(client, URL);
+    esp_http_client_set_method(client, HTTP_METHOD_POST);    
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_err_t err = esp_http_client_perform(client);
+}
+
 void lichess_api_stream_move_of_game(void *pvParameters) {
     static const char* TAG = "LICHESS STREAM MOVE";
 
@@ -424,16 +734,25 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             }
             else if(strcmp(result, "1/2 - 1/2. Game drawn") == 0){
                 want_moves = false;
+                char p1[5] = "1/2";
+                char p2[5] = "1/2";
+                scoreboard_WinUpdate(p1, p2);
                 printf("Game Ended: %s\n", result);
                 break;
             }
             else if(strcmp(result, "0-1 (Black wins)") == 0){
                     want_moves = false;
+                    char p1[5] = "0";
+                    char p2[5] = "1";
+                    scoreboard_WinUpdate(p1, p2);
                     printf("Game Ended: Black wins. 0-1\n");
                     break;
             }
             else if(strcmp(result, "1-0 (White wins)") == 0){
                     want_moves = false;
+                    char p1[5] = "1";
+                    char p2[5] = "0";
+                    scoreboard_WinUpdate(p1, p2);
                     printf("Game Ended: White wins. 1-0\n");
                     break;
             }
@@ -445,161 +764,20 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             printf("Official last move: %s\n", get_last_move_played_by_opponent());
             printf("White has %lu time\n", white_time);
             printf("Black has %lu time\n", black_time);
-            GraphicLCD_DispClock(white_time, true);
-            GraphicLCD_DispClock(black_time, false);
+            if(strcmp(getColor(), "white") == 0){ 
+                P1_time = white_time;
+                P2_time = black_time;
+                GraphicLCD_DispClock(white_time, true);
+                GraphicLCD_DispClock(black_time, false);
+            }
+            else{
+                P1_time = black_time;
+                P2_time = white_time;                
+                GraphicLCD_DispClock(white_time, false);
+                GraphicLCD_DispClock(black_time, true);
+            }
+            our_turn = our_turn ^ 1;           
         }
     }
     vTaskDelete(NULL);
 }
-
-bool get_opponent_move_update(){
-    return move_update;
-}
-
-void reset_opponent_move_update(){
-    move_update = false;
-}
-
-/*
-    game_id: ID of the game being played
-    move: a FOUR character character array that contains the source and destination square (a1a2)
-*/
-void lichess_api_make_move(char user_move[]) {
-    // TODO, remove this comment after
-    // if (!logged_in) {
-    //     return;
-    // }
-
-    char URL[100] = "https://lichess.org/api/board/game/";
-    char move[10] = "/move/";
-    strcat(URL, GAME_ID);
-    strcat(URL, move);
-    strcat(URL, user_move);
-    esp_http_client_set_url(client, URL);
-    esp_http_client_set_method(client, HTTP_METHOD_POST);
-    const char* TAG = "LICHESS_POST_MOVE";
-
-    esp_err_t err = esp_http_client_perform(client);
-    ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
-                esp_http_client_get_status_code(client),
-                esp_http_client_get_content_length(client));
-    } else {
-        ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
-    }
-}
-
-void lichess_api_stream_event() {
-    if (!logged_in) {
-        return;
-    }
-
-    static char stream_data[550] = {};
-    static esp_http_client_config_t config_stream = {
-        .url = "https://lichess.org/api/stream/event",
-        .path = "/get",
-        .transport_type = HTTP_TRANSPORT_OVER_TCP,
-        .event_handler = _http_event_handler,
-        .user_data = stream_data,
-    };
-
-    client_stream = esp_http_client_init(&config_stream);
-    esp_http_client_set_header(client_stream, AUTHORIZATION_HEADER, bearer_token);
-    esp_http_client_set_method(client_stream, HTTP_METHOD_GET);
-    esp_http_client_open(client_stream, 0);
-    esp_http_client_fetch_headers(client_stream);
-
-    printf("Response code %d\n", esp_http_client_get_status_code(client_stream));
-    esp_http_client_read(client_stream, stream_data, 550);
-    printf("%s\n", stream_data);
-    set_game_id(stream_data);
-    set_color(stream_data);
-    printf("GAME ID: %s\n", GAME_ID);
-}
-
-void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
-    if (!logged_in) {
-        return;
-    }
-
-    if(minutes <= 0){
-        printf("ERROR, MINUTES MUST BE >= 1");
-        return;
-    }    
-    char FULL_PARAMS[1000] = {};
-    char URL[100] = "https://lichess.org/api/board/seek";
-    rated ? strcat(FULL_PARAMS, "rated=true&") : strcat(FULL_PARAMS, "rated=false&");
-
-    char fullMin[100] = "time=";
-    // char fullInc[100] = "&increment=";
-
-    int min_size = (int)((ceil(log10(minutes))+1)*sizeof(char));
-    // int inc_size = 1;
-    // if(increment >= 10){
-    //    inc_size = (int)((ceil(log10(increment))+1)*sizeof(char));
-    // }
-
-    char min_as_string[min_size];
-    // char inc_as_string[inc_size];
-
-    sprintf(min_as_string, "%d", minutes);
-    // sprintf(inc_as_string, "%d", increment);
-
-    strcat(fullMin, min_as_string);
-    // strcat(fullInc, inc_as_string);
-
-    strcat(FULL_PARAMS, fullMin);
-    // strcat(FULL_PARAMS, fullInc);
-
-
-    strcat(FULL_PARAMS, "&variant=standard");
-    
-    // printf("%s\n", FULL_PARAMS);
-    esp_http_client_set_url(client, URL);
-    esp_http_client_set_method(client, HTTP_METHOD_POST);
-    esp_http_client_set_post_field(client, FULL_PARAMS, strlen(FULL_PARAMS));
-    esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
-    
-
-    const char* TAG = "LICHESS_CREATE_GAME";
-    printf("Full params length: %d\n", strlen(FULL_PARAMS));
-    esp_err_t err = esp_http_client_perform(client);
-    printf("Response code %d\n", esp_http_client_get_status_code(client));
-
-    ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
-                esp_http_client_get_status_code(client),
-                esp_http_client_get_content_length(client));
-    } else {
-        ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
-    }
-
-    lichess_api_stream_event();
-}
-
-void lichess_api_get_email(void)
-{
-    if (!logged_in) {
-        return;
-    }
-
-    esp_http_client_set_url(client, "https://lichess.org/api/account/email");
-    esp_http_client_set_method(client, HTTP_METHOD_GET);
-    esp_http_client_set_header(client, "Authorization", bearer_token);
-    const char* TAG = "LICHESS_EMAIL";
-    
-    // GET
-    esp_err_t err = esp_http_client_perform(client);
-    ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
-
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
-                esp_http_client_get_status_code(client),
-                esp_http_client_get_content_length(client));
-    } else {
-        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
-    }
-}
-
