@@ -8,11 +8,10 @@ adc_cali_handle_t cali;
 struct coordinate{
     int x;
     int y;
-    char original;
 };
 
 struct coordinate changes[4]; //Will store the changes in the board, should only be 4 max
-                              //4 for castling, 2 for normal move
+                              //4 for castling, 2 for normal move, 3 for en passant
 
 int Get_Magnetic(adc_oneshot_unit_handle_t adc_handler){ // Will read ADC pin
     int reading;
@@ -174,38 +173,109 @@ void poll_board(char board[8][8]){ // Polls the entire board, reading each hall 
             select_xy_sensor(i, j);
             reading = Get_Magnetic(hall_effect);
             if(reading > POSITIVE){
-                if(board[i][j] != 'b'){
+                if(board[i][j] != 'B'){
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
-                    change.original = board[i][j];
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = 'b';
+                board[i][j] = 'B';
             }
             else if(reading < NEGATIVE){
-                if(board[i][j] != 'w'){
+                if(board[i][j] != 'W'){
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
-                    change.original = board[i][j];
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = 'w';
+                board[i][j] = 'W';
             }
             else{
-                if(board[i][j] != 'n'){
+                if(board[i][j] != '-'){
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
-                    change.original = board[i][j];
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = 'n';
+                board[i][j] = '-';
             }
         }
     }
+}
+
+void compare(char board_after [8][8], char* move){
+    int k = sizeof(changes)/sizeof(struct coordinate);
+    if(k == 3){
+        struct coordinate src;
+        struct coordinate dest;
+        dest.x = -1;
+        dest.y = -1;
+        for(int i = 0; i < 3; i++){
+            struct coordinate curr = changes[i];
+            if(dest.x != -1){
+                break;
+            }
+            if(board_after[curr.x][curr.y] != '-'){
+                dest.x = curr.x;
+                dest.y = curr.y;
+            }
+        }
+        for(int i = 0; i < 3; i++){
+            struct coordinate curr = changes[i];
+            if(abs(curr.x - dest.x) == 1 && abs(curr.y - dest.y) == 1){
+                src.x = curr.x;
+                src.y = curr.y;
+                break;
+            }
+        }
+        char source_move[5] = {};
+        char dest_move [5] = {};
+        map_array_coordinate_to_chess_square(src.x, src.y, source_move);
+        map_array_coordinate_to_chess_square(dest.x, dest.y, dest_move);
+        strcat(move, source_move);
+        strcat(move, dest_move);
+        return;
+    }
+    // Castling happened
+    if(k == 4){
+        if(changes[0].x == 0){
+            if(changes[0].y == 0){
+                strcpy(move, "e8c8");
+                return;
+            }
+            else{
+                if(changes[3].y == 7){
+                    // Black kingside castled
+                    strcpy(move, "e8g8");
+                    return;
+                }
+            }
+        }
+        else if(changes[0].x == 7){
+            if(changes[0].y == 0){
+                strcpy(move, "e1c1");
+                return;
+            }
+            else if(changes[3].y == 7){
+                strcpy(move, "e1g1");
+                return;
+            }
+        }
+    }
+    char src[5] = {};
+    char dest[5] = {};
+    for(int i = 0; i < k; i++){
+        struct coordinate c = changes[i];
+        if(board_after[c.x][c.y] == '-'){
+            map_array_coordinate_to_chess_square(c.x, c.y, src);
+        }   
+        else{
+            map_array_coordinate_to_chess_square(c.x, c.y, dest);
+        }
+    }
+    strcat(move, src);
+    strcat(move, dest);
 }
