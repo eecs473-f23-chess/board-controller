@@ -206,6 +206,17 @@ void poll_board(char board[8][8]){ // Polls the entire board, reading each hall 
     }
 }
 
+void map_array_coordinate_to_chess_square(int x, int y, char* move){
+    int rank = 8 - x;
+    char rank_as_char = (char)(rank + '0');
+    char file = (char)(y + 'a');
+    char coordinate[3] = {};
+    coordinate[0] = file;
+    coordinate[1] = rank_as_char;
+    coordinate[2] = 0;
+    strcpy(move, coordinate);
+}
+
 void compare(char board_after [8][8], char* move){
     int k = sizeof(changes)/sizeof(struct coordinate);
     if(k == 3){

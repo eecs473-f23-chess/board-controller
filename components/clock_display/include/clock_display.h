@@ -15,8 +15,8 @@
 #define HIGH 1
 
 // unsigned char NHD[];
-extern int P1_time;
-extern int P2_time;
+extern uint32_t white_time;
+extern uint32_t black_time;
 extern bool our_turn;
 
 void GraphicLCD_data_write(unsigned char d, bool left);
