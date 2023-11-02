@@ -18,6 +18,9 @@
 #include "electromagnet.h"
 #include "board_state.h"
 
+bool our_turn; // Track whose move it is, should be switched every turn
+
+
 void app_main(void)
 {
     nvs_flash_init();
@@ -44,4 +47,29 @@ void app_main(void)
     xyp_return_home();
 
 #endif
+    //Whenever we get the functions to do so, call this
+    // scoreboard_Chess_Setup(name1, name2, country1, country2, rating1, rating2)
+
+    //Should be called whenver we find out the color
+   
+    // TODO, uncomment
+   
+    // if(strcmp(color, "white") == 0){
+    //     lichess_api_make_move("e2e4");
+    // }
+    // else{
+    //     lichess_api_make_move("e7e5");
+    // }
+    wifi_connect();
+    const char token_fake = "fake";
+    lichess_api_login(token_fake, 10);
+    lichess_api_create_game(true, 15, 3);
+    xTaskCreate(&lichess_api_stream_move_of_game, "get opponent move", 8192, NULL, 4, NULL);
+    if(strcmp(getColor(), "white")){
+        our_turn = true;
+    }
+    else if(strcmp(getColor(), "black")){
+        our_turn = false;
+    }
+    xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
 }
