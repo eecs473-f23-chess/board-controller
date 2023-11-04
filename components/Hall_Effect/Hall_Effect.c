@@ -1,4 +1,5 @@
 #include "Hall_Effect.h"
+#include "board_state.h"
 //0 - 46, 1 - 9, 2 - 10
 
 adc_oneshot_unit_handle_t hall_effect; //ADC setup stuff
@@ -12,7 +13,8 @@ struct coordinate{
 
 struct coordinate changes[4]; //Will store the changes in the board, should only be 4 max
                               //4 for castling, 2 for normal move, 3 for en passant
-
+// TODO, add k here for counting number of actual changes
+int k = 0;
 int Get_Magnetic(adc_oneshot_unit_handle_t adc_handler){ // Will read ADC pin
     int reading;
     adc_oneshot_get_calibrated_result(hall_effect, cali, ADC_CHANNEL_0, &reading);
@@ -204,10 +206,28 @@ void poll_board(char board[8][8]){ // Polls the entire board, reading each hall 
             }
         }
     }
+    // Updating global variable to keep track of actual changes
+    k = index;
 }
 
+<<<<<<< Updated upstream
 void compare(char board_after [8][8], char* move){
+=======
+void map_array_coordinate_to_chess_square(int x, int y, char* move){
+    int rank = 8 - x;
+    char rank_as_char = (char)(rank + '0');
+    char file = (char)(y + 'a');
+    char coordinate[3] = {};
+    coordinate[0] = file;
+    coordinate[1] = rank_as_char;
+    coordinate[2] = 0;
+    strcpy(move, coordinate);
+}
+
+void compare(Board board_after [8][8], char* move){
+>>>>>>> Stashed changes
     int k = sizeof(changes)/sizeof(struct coordinate);
+    // We know this has to be enpassant
     if(k == 3){
         struct coordinate src;
         struct coordinate dest;
@@ -218,7 +238,7 @@ void compare(char board_after [8][8], char* move){
             if(dest.x != -1){
                 break;
             }
-            if(board_after[curr.x][curr.y] != '-'){
+            if(board_after[curr.x][curr.y] != NP){
                 dest.x = curr.x;
                 dest.y = curr.y;
             }
@@ -235,7 +255,7 @@ void compare(char board_after [8][8], char* move){
         char dest_move [5] = {};
         map_array_coordinate_to_chess_square(src.x, src.y, source_move);
         map_array_coordinate_to_chess_square(dest.x, dest.y, dest_move);
-        strcat(move, source_move);
+        strcpy(move, source_move);
         strcat(move, dest_move);
         return;
     }
@@ -252,6 +272,10 @@ void compare(char board_after [8][8], char* move){
                     strcpy(move, "e8g8");
                     return;
                 }
+                else{
+                    printf("Illegal move. Tried to castle as black, but not allowed\n");
+                    return;
+                }
             }
         }
         else if(changes[0].x == 7){
@@ -263,19 +287,23 @@ void compare(char board_after [8][8], char* move){
                 strcpy(move, "e1g1");
                 return;
             }
+            else{
+                printf("Illegal move. Tried to castle as white, but not allowed\n");
+                return;
+            }
         }
     }
     char src[5] = {};
     char dest[5] = {};
     for(int i = 0; i < k; i++){
         struct coordinate c = changes[i];
-        if(board_after[c.x][c.y] == '-'){
+        if(board_state_get_piece_on_square(c.x,c.y) == NP){
             map_array_coordinate_to_chess_square(c.x, c.y, src);
         }   
         else{
             map_array_coordinate_to_chess_square(c.x, c.y, dest);
         }
     }
-    strcat(move, src);
+    strcpy(move, src);
     strcat(move, dest);
 }
