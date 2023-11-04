@@ -13,9 +13,14 @@ struct coordinate{
 
 struct coordinate changes[4]; //Will store the changes in the board, should only be 4 max
                               //4 for castling, 2 for normal move, 3 for en passant
+<<<<<<< HEAD
 // TODO, add k here for counting number of actual changes
 int k = 0;
 int Get_Magnetic(adc_oneshot_unit_handle_t adc_handler){ // Will read ADC pin
+=======
+
+int Get_Magnetic(){ // Will read ADC pin
+>>>>>>> 06bb3b27c6b635548e6b93b5b76d342feb2e3046
     int reading;
     adc_oneshot_get_calibrated_result(hall_effect, cali, ADC_CHANNEL_0, &reading);
     return reading;
