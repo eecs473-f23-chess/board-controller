@@ -13,7 +13,10 @@ struct coordinate{
 
 struct coordinate changes[4]; //Will store the changes in the board, should only be 4 max
                               //4 for castling, 2 for normal move, 3 for en passant
+<<<<<<< Updated upstream
 <<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
 // TODO, add k here for counting number of actual changes
 int k = 0;
 int Get_Magnetic(adc_oneshot_unit_handle_t adc_handler){ // Will read ADC pin
@@ -230,6 +233,9 @@ void map_array_coordinate_to_chess_square(int x, int y, char* move){
 }
 
 void compare(Board board_after [8][8], char* move){
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     int k = sizeof(changes)/sizeof(struct coordinate);
     // We know this has to be enpassant
