@@ -528,7 +528,7 @@ void lichess_api_stream_event() {
     printf("GAME ID: %s\n", GAME_ID);
 }
 
-void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
+void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment, bool white) {
     if (!logged_in) {
         return;
     }
@@ -552,6 +552,13 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
 
 
     strcat(FULL_PARAMS, "&variant=standard");
+
+    if(white == true){
+        strcat(FULL_PARAMS, "&color=white");
+    }
+    else{
+        strcat(FULL_PARAMS, "&color=black");
+    }    
     
     esp_http_client_set_url(client, URL);
     esp_http_client_set_method(client, HTTP_METHOD_POST);
@@ -672,8 +679,7 @@ void lichess_api_handle_draw(){
     const char* TAG = "LICHESS_HANDLE_DRAW";
     char URL[100] = "https://lichess.org/api/board/game/";
     strcat(URL, GAME_ID);
-    strcat(URL, "/draw");
-    strcat(URL, "yes");
+    strcat(URL, "/draw/yes");
 
     esp_http_client_set_url(client, URL);
     esp_http_client_set_method(client, HTTP_METHOD_POST);    

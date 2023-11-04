@@ -27,3 +27,5 @@ void poll_board();
 void compare(char board_after [8][8], char* move);
 
 void map_array_coordinate_to_chess_square(int x, int y, char* move);
+
+void update_board_based_off_opponent_move(char* move);

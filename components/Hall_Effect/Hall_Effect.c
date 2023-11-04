@@ -5,6 +5,8 @@ adc_oneshot_unit_handle_t hall_effect; //ADC setup stuff
 adc_cali_handle_t cali;
  //State of the board
 
+
+
 struct coordinate{
     int x;
     int y;

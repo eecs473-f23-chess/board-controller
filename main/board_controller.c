@@ -14,22 +14,28 @@
 #include "clock_display.h"
 #include "score_display.h"
 #include "xy_plotter.h"
+#include "board_state.h"
 
 bool our_turn; // Track whose move it is, should be switched every turn
-
+Board chess_board[8][8];
 
 void app_main(void)
 {
     nvs_flash_init();
     xyp_init();
 
+    // nvs_flash_init();
+    // wifi_init();
+    // mobile_app_ble_init();
+    // lichess_api_init_client();
+    
     // TODO, uncomment
     // while (!wifi_is_connected() || !lichess_api_is_logged_in()) {
     //     vTaskDelay(pdMS_TO_TICKS(250));
     // }
 
-    GraphicLCD_init_LCD();
-    scoreboard_init();
+    // GraphicLCD_init_LCD();
+    // scoreboard_init();
     // //Need app input here for create game parameterss
     // //printf("%s\n", getColor());
 
@@ -47,16 +53,16 @@ void app_main(void)
     // else{
     //     lichess_api_make_move("e7e5");
     // }
-    wifi_connect();
-    const char token_fake = "fake";
-    lichess_api_login(token_fake, 10);
-    lichess_api_create_game(true, 15, 3);
-    xTaskCreate(&lichess_api_stream_move_of_game, "get opponent move", 8192, NULL, 4, NULL);
-    if(strcmp(getColor(), "white")){
-        our_turn = true;
-    }
-    else if(strcmp(getColor(), "black")){
-        our_turn = false;
-    }
-    xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
+    // wifi_connect();
+    // const char token_fake = "fake";
+    // lichess_api_login(token_fake, 10);
+    // lichess_api_create_game(true, 15, 3, false);
+    // xTaskCreate(&lichess_api_stream_move_of_game, "get opponent move", 8192, NULL, 4, NULL);
+    // if(strcmp(getColor(), "white")){
+    //     our_turn = true;
+    // }
+    // else if(strcmp(getColor(), "black")){
+    //     our_turn = false;
+    // }
+    // xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
 }
