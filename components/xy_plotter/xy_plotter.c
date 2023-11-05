@@ -151,3 +151,15 @@ void xyp_set_board_pos(const float x_pos, const float y_pos) {
     stepper_set_board_pos(&y_stepper, y_pos);
     xEventGroupWaitBits(stepper_event_group, y_stepper.event_group_bit, pdTRUE, pdTRUE, portMAX_DELAY);
 }
+
+void xyp_calibration (char axis){
+    if(axis == x){
+        //one way on x until hit limit switch
+        //go other way until hit limit switch
+        //count ticks for full length = 20 inches, divide by 8 for squares     
+
+    }
+    else{
+        //same but for y 
+    }
+}
