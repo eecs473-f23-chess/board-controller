@@ -9,11 +9,13 @@
 #include <unistd.h>
 #include <wifi.h>
 
+#include "types.h"
 #include "lichess_api.h"
 #include "mobile_app_ble.h"
 #include "clock_display.h"
 #include "score_display.h"
 #include "xy_plotter.h"
+#include "electromagnet.h"
 
 int P1_time; //Tracks our time
 int P2_time; //Tracks opponents time
