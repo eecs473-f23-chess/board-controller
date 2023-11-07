@@ -9,8 +9,8 @@
 #include "esp_adc/adc_continuous.h"
 #include "string.h"
 
-#define POSITIVE 1200
-#define NEGATIVE 800
+#define POSITIVE 1150
+#define NEGATIVE 850
 
 int Get_Magnetic();
 
