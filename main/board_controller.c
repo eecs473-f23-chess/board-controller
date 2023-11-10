@@ -50,16 +50,16 @@ void app_main(void)
     // else{
     //     lichess_api_make_move("e7e5");
     // }
-    // wifi_connect();
-    // const char token_fake = "fake";
-    // lichess_api_login(token_fake, 10);
-    // lichess_api_create_game(true, 15, 3);
-    // xTaskCreate(&lichess_api_stream_move_of_game, "get opponent move", 8192, NULL, 4, NULL);
-    // if(strcmp(getColor(), "white")){
-    //     our_turn = true;
-    // }
-    // else if(strcmp(getColor(), "black")){
-    //     our_turn = false;
-    // }
-    // xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
+    wifi_connect();
+    const char token_fake = "fake";
+    lichess_api_login(token_fake, 10);
+    lichess_api_create_game(true, 15, 3);
+    xTaskCreate(&lichess_api_stream_move_of_game, "get opponent move", 8192, NULL, 4, NULL);
+    if(strcmp(getColor(), "white")){
+        our_turn = true;
+    }
+    else if(strcmp(getColor(), "black")){
+        our_turn = false;
+    }
+    xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
 }
