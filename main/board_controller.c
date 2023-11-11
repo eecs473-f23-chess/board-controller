@@ -24,27 +24,15 @@ void app_main(void)
 {
     nvs_flash_init();
     xyp_init();
+    vTaskDelay(pdMS_TO_TICKS(500));
 
-    xyp_set_board_pos(0, 1);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 2);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 3);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 4);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 6);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 8);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 4);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 2.5);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 1.5);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 0.5);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    xyp_set_board_pos(0, 0);
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    xyp_calibrate();
+
+    vTaskDelay(pdMS_TO_TICKS(5000));
+
+
+    xyp_set_board_pos(2,2);
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    xyp_set_board_pos(5,5);
+
 }
