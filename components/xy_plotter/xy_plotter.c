@@ -19,7 +19,8 @@
 // Alarm/timer config
 #define TIMER_RESOLUTION        1e6 // 1Mhz
 #define ALARM_PERIOD            1e-3 // 1ms 
-#define ALARM_COUNT             TIMER_RESOLUTION * ALARM_PERIOD * 2
+#define ALARM_COUNT             TIMER_RESOLUTION * ALARM_PERIOD
+#define CAL_ALARM_COUNT         ALARM_COUNT * 2
 
 // Stepper motors
 #define STEPS_PER_REVOLUTION    200
@@ -31,8 +32,8 @@
 #define SQUARE_SIZE             2.5 // inches
 #define X_L_OFFSET              0   //offset from left limit switch
 #define Y_L_OFFSET              0   
-#define ACTUAL_LENGTH_X         20  //set manually 
-#define ACTUAL_LENGTH_Y         20  //set manually
+uint32_t ACTUAL_LENGTH_X;           // Actual size of board in inches
+uint32_t ACTUAL_LENGTH_Y;           // Actual size of board in inches
 
 // Event group bits
 #define X_BIT                   BIT0
@@ -81,6 +82,7 @@ EventGroupHandle_t xy_calibration_event_group;
 cal_stepper_move_t current_move;
 cal_axis_t current_axis;
 gpio_num_t current_switch;
+
 
 bool on_alarm_event(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
     struct xyp_stepper* stepper = NULL;
@@ -228,7 +230,7 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
         gptimer_start(timer);
 
         last_moved = 'X';
-        
+
         if(!gpio_get_level(LIMITL_GPIO)){
             current_axis = Y_AXIS;
             y_stepper.steps_remaining = INCHES_TO_STEPS(1);
@@ -238,21 +240,43 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
             last_moved = 'Y';
         }
     }
+
     if(!gpio_get_level(LIMITR_GPIO)) {
-        move_axis_cal('X', 'R'); // move X a little to the right to avoid edge case of hitting limit L
+        // move X a little to the right to avoid edge case of hitting limit L
+        current_axis = X_AXIS;
+        x_stepper.steps_remaining = INCHES_TO_STEPS(1.5);
+        gpio_set_level(x_stepper.dir_gpio, RIGHT_DIR);
+        gptimer_start(timer);
+
         if(last_moved == 'Y' || last_moved == NULL){
-            move_axis_cal('X', 'L');
+            current_axis = X_AXIS;
+            x_stepper.steps_remaining = INCHES_TO_STEPS(1);
+            gpio_set_level(x_stepper.dir_gpio, LEFT_DIR);
+            gptimer_start(timer);
+
             last_moved = 'X';
-        }   else {
-            move_axis_cal('Y', 'L');
+        } else {
+            current_axis = Y_AXIS;
+            y_stepper.steps_remaining = INCHES_TO_STEPS(1);
+            gpio_set_level(y_stepper.dir_gpio, LEFT_DIR);
+            gptimer_start(timer);
+
             last_moved = 'Y';
         }
         if(!gpio_get_level(LIMITR_GPIO)) {
             if(last_moved == 'X') {
-                move_axis_cal('Y', 'L');
+                current_axis = Y_AXIS;
+                y_stepper.steps_remaining = INCHES_TO_STEPS(1);
+                gpio_set_level(y_stepper.dir_gpio, LEFT_DIR);
+                gptimer_start(timer);
+
                 last_moved = 'X';
             } else {
-                move_axis_cal('X', 'L');
+                current_axis = X_AXIS;
+                x_stepper.steps_remaining = INCHES_TO_STEPS(1);
+                gpio_set_level(x_stepper.dir_gpio, LEFT_DIR);
+                gptimer_start(timer);
+
                 last_moved = 'X';
             }
         }
@@ -266,8 +290,36 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
  * Sets XY plotter home position/ (0,0) as bottom left corner (square A1)
 */
 void xyp_calibrate(){ 
+    gptimer_handle_t cal_timer;
+
+    // Create timer
+    gptimer_config_t timer_config = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = TIMER_RESOLUTION,
+    };
+    ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &cal_timer));
+
+    // Add alarm
+    gptimer_alarm_config_t cal_alarm_config = {
+        .reload_count = 0,
+        .alarm_count = CAL_ALARM_COUNT,
+        .flags.auto_reload_on_alarm = true,
+    };
+    ESP_ERROR_CHECK(gptimer_set_alarm_action(&cal_timer, &cal_alarm_config));
+
+    gptimer_event_callbacks_t alarm_cb = {
+        .on_alarm = calibration_timer_callback,
+    };
+    ESP_ERROR_CHECK(gptimer_register_event_callbacks(&cal_timer, &alarm_cb, NULL));
+    ESP_ERROR_CHECK(gptimer_enable(&cal_timer));
+
+    xy_calibration_event_group = xEventGroupCreate();
+
+
+    // first check limit switches and make sure none are pressed
     current_move = TIMED_MOVE;
-    ensure_no_limit_switch();
+    ensure_no_limit_switch(&cal_timer);
 
     //Calibrate x axis
     uint64_t xcount = 0;
