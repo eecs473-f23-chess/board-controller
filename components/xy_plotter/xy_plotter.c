@@ -30,10 +30,14 @@
 
 // Chess board
 #define SQUARE_SIZE             2.5 // inches
-#define X_L_OFFSET              0   //offset from left limit switch
-#define Y_L_OFFSET              0   
-uint32_t ACTUAL_LENGTH_X;           // Actual size of board in inches
-uint32_t ACTUAL_LENGTH_Y;           // Actual size of board in inches
+#define INCHES_LENGTH_X         23.5    // actual length of x side in inches
+#define INCHES_LENGTH_Y         22.5    // actual length of y side in inches
+#define X_OFFSET_INCHES         1.75
+#define Y_OFFSET_INCHES         1.25
+#define X_OFFSET_STEPS          INCHES_TO_STEPS(X_OFFSET_INCHES)    
+#define Y_OFFSET_STEPS          INCHES_TO_STEPS(Y_OFFSET_INCHES)
+uint32_t STEPS_LENGTH_X;
+uint32_t STEPS_LENGTH_Y;
 
 // Event group bits
 #define X_BIT                   BIT0
@@ -51,11 +55,11 @@ struct xyp_stepper {
     gptimer_handle_t timer;
     gpio_num_t dir_gpio;
     gpio_num_t step_gpio;
-    float current_board_pos;
+    float current_board_pos; // in units of squares
     uint32_t steps_remaining;
     uint8_t step_state;
     uint8_t event_group_bit;
-    uint8_t step_per_inch;
+    uint8_t steps_per_inch;
 };
 
 typedef enum CAL_STEPPER_MOVE {
@@ -112,7 +116,6 @@ bool on_alarm_event(gptimer_handle_t timer, const gptimer_alarm_event_data_t *ed
 void stepper_init(struct xyp_stepper* stepper) {
     stepper->steps_remaining = 0;
     stepper->step_state = LOW;
-    stepper->step_per_inch = STEPS_PER_REVOLUTION/INCHES_PER_REVOLUTION;
     
     // Set GPIOs to output
     gpio_set_direction(stepper->dir_gpio, GPIO_MODE_OUTPUT);
@@ -156,7 +159,7 @@ void stepper_set_board_pos(struct xyp_stepper* stepper, const float pos) {
 
     uint16_t current_inches = stepper->current_board_pos * SQUARE_SIZE;
     uint16_t target_inches = pos * SQUARE_SIZE;
-    uint16_t steps = abs(current_inches - target_inches)*stepper->step_per_inch;
+    uint16_t steps = abs(current_inches - target_inches)*stepper->steps_per_inch;
     stepper->steps_remaining = steps;
     stepper->current_board_pos = pos;
     gptimer_start(stepper->timer);
@@ -221,13 +224,14 @@ bool calibration_timer_callback(gptimer_handle_t timer, const gptimer_alarm_even
 }
 
 void ensure_no_limit_switch(gptimer_handle_t timer) {
-    char last_moved = NULL;
+    char last_moved = 'N';
 
     if(!gpio_get_level(LIMITL_GPIO)){
         current_axis = X_AXIS;
         x_stepper.steps_remaining = INCHES_TO_STEPS(1);
         gpio_set_level(x_stepper.dir_gpio, RIGHT_DIR);
         gptimer_start(timer);
+        xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
         last_moved = 'X';
 
@@ -236,6 +240,7 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
             y_stepper.steps_remaining = INCHES_TO_STEPS(1);
             gpio_set_level(y_stepper.dir_gpio, RIGHT_DIR);
             gptimer_start(timer);
+            xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
             last_moved = 'Y';
         }
@@ -247,12 +252,14 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
         x_stepper.steps_remaining = INCHES_TO_STEPS(1.5);
         gpio_set_level(x_stepper.dir_gpio, RIGHT_DIR);
         gptimer_start(timer);
+        xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
-        if(last_moved == 'Y' || last_moved == NULL){
+        if(last_moved == 'Y' || last_moved == 'N'){
             current_axis = X_AXIS;
             x_stepper.steps_remaining = INCHES_TO_STEPS(1);
             gpio_set_level(x_stepper.dir_gpio, LEFT_DIR);
             gptimer_start(timer);
+            xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
             last_moved = 'X';
         } else {
@@ -260,6 +267,7 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
             y_stepper.steps_remaining = INCHES_TO_STEPS(1);
             gpio_set_level(y_stepper.dir_gpio, LEFT_DIR);
             gptimer_start(timer);
+            xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
             last_moved = 'Y';
         }
@@ -269,6 +277,7 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
                 y_stepper.steps_remaining = INCHES_TO_STEPS(1);
                 gpio_set_level(y_stepper.dir_gpio, LEFT_DIR);
                 gptimer_start(timer);
+                xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
                 last_moved = 'X';
             } else {
@@ -276,6 +285,7 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
                 x_stepper.steps_remaining = INCHES_TO_STEPS(1);
                 gpio_set_level(x_stepper.dir_gpio, LEFT_DIR);
                 gptimer_start(timer);
+                xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
                 last_moved = 'X';
             }
@@ -293,12 +303,12 @@ void xyp_calibrate(){
     gptimer_handle_t cal_timer;
 
     // Create timer
-    gptimer_config_t timer_config = {
+    gptimer_config_t cal_timer_config = {
         .clk_src = GPTIMER_CLK_SRC_DEFAULT,
         .direction = GPTIMER_COUNT_UP,
         .resolution_hz = TIMER_RESOLUTION,
     };
-    ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &cal_timer));
+    ESP_ERROR_CHECK(gptimer_new_timer(&cal_timer_config, &cal_timer));
 
     // Add alarm
     gptimer_alarm_config_t cal_alarm_config = {
@@ -306,58 +316,69 @@ void xyp_calibrate(){
         .alarm_count = CAL_ALARM_COUNT,
         .flags.auto_reload_on_alarm = true,
     };
-    ESP_ERROR_CHECK(gptimer_set_alarm_action(&cal_timer, &cal_alarm_config));
+    ESP_ERROR_CHECK(gptimer_set_alarm_action(cal_timer, &cal_alarm_config));
 
     gptimer_event_callbacks_t alarm_cb = {
         .on_alarm = calibration_timer_callback,
     };
-    ESP_ERROR_CHECK(gptimer_register_event_callbacks(&cal_timer, &alarm_cb, NULL));
-    ESP_ERROR_CHECK(gptimer_enable(&cal_timer));
+    ESP_ERROR_CHECK(gptimer_register_event_callbacks(cal_timer, &alarm_cb, NULL));
+    ESP_ERROR_CHECK(gptimer_enable(cal_timer));
 
     xy_calibration_event_group = xEventGroupCreate();
 
-
     // first check limit switches and make sure none are pressed
     current_move = TIMED_MOVE;
-    ensure_no_limit_switch(&cal_timer);
+    ensure_no_limit_switch(cal_timer);
+    
+    // reset x axis
+    current_move = LIMIT_MOVE;
+    current_axis = X_AXIS;
+    current_switch = LIMITL_GPIO;
+    gpio_set_level(x_stepper.dir_gpio, LEFT_DIR);
+    gptimer_start(cal_timer);
+    xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
-    //Calibrate x axis
-    uint64_t xcount = 0;
-    uint64_t ycount = 0;
-    while (gpio_get_level(LIMITR_GPIO)){
-        move_axis_cal('X', 'R');
-    }
+    // calibrate x axis
+    x_stepper.steps_remaining = 0;
+    current_switch = LIMITR_GPIO;
+    gpio_set_level(x_stepper.dir_gpio, RIGHT_DIR);
+    gptimer_start(cal_timer);
+    xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    STEPS_LENGTH_X = x_stepper.steps_remaining; // fill in global
+    x_stepper.steps_per_inch = STEPS_LENGTH_X / INCHES_LENGTH_X; // fill in x stepper struct
+    
+    // move x to center
+    current_move = TIMED_MOVE;
+    x_stepper.steps_remaining = X_OFFSET_STEPS + ((4.5 * SQUARE_SIZE) * x_stepper.steps_per_inch);
+    x_stepper.current_board_pos = 4.5;
+    gpio_set_level(x_stepper.dir_gpio, LEFT_DIR);
+    gptimer_start(cal_timer);
+    xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    
+    // reset y axis
+    current_move = LIMIT_MOVE;
+    current_axis = Y_AXIS;
+    current_switch = LIMITL_GPIO;
+    gpio_set_level(y_stepper.dir_gpio, LEFT_DIR);
+    gptimer_start(cal_timer);
+    xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
-    ESP_ERROR_CHECK(gptimer_set_raw_count(x_stepper.timer, 0)); //start timer at 0
-    while(gpio_get_level(LIMITL_GPIO)){
-        move_axis_cal('X', 'L');
-    }
-    ESP_ERROR_CHECK(gptimer_get_raw_count(x_stepper.timer, &xcount));
+    // calibrate y axis
+    y_stepper.steps_remaining = 0;
+    current_switch = LIMITR_GPIO;
+    gpio_set_level(y_stepper.dir_gpio, RIGHT_DIR);
+    gptimer_start(cal_timer);
+    xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    STEPS_LENGTH_Y = y_stepper.steps_remaining; // fill in global
+    y_stepper.steps_per_inch = STEPS_LENGTH_Y / INCHES_LENGTH_Y; // fill in y stepper struct
 
-    x_stepper.current_board_pos = 0; //set L limit switch as X 0 pos
-    stepper_set_board_pos(&x_stepper, X_L_OFFSET);
-    x_stepper.current_board_pos = 0; //New calibrated 0 position
-    move_axis_cal('X', 'R'); //move 1 square to the right to release limit L
-
-    //Calibrate y axis
-    while(!gpio_get_level(LIMITR_GPIO)){
-        move_axis_cal('Y', 'R');
-    }
-    ESP_ERROR_CHECK(gptimer_set_raw_count(y_stepper.timer, 0));//start timer at 0
-
-    while(!gpio_get_level(LIMITR_GPIO)){
-        move_axis_cal('Y', 'L');
-    }
-
-    ESP_ERROR_CHECK(gptimer_get_raw_count(y_stepper.timer, &ycount));
-    y_stepper.current_board_pos = 0; //set L limit switch as X 0 pos
-    stepper_set_board_pos(&y_stepper, Y_L_OFFSET);
-    y_stepper.current_board_pos = 0; //New calibrated 0 position
-
-    int TPI_x = xcount/ACTUAL_LENGTH_X; //steps/ticks per inch on x-axis
-    int TPI_y = ycount/ACTUAL_LENGTH_Y; //steps/ticks per inch on y-axis
-    x_stepper.TPI = TPI_x;
-    y_stepper.TPI = TPI_y;
+    // move y to center
+    current_move = TIMED_MOVE;
+    y_stepper.steps_remaining = Y_OFFSET_STEPS + ((4.5 * SQUARE_SIZE) * y_stepper.steps_per_inch);
+    y_stepper.current_board_pos = 4.5;
+    gpio_set_level(y_stepper.dir_gpio, LEFT_DIR);
+    gptimer_start(cal_timer);
+    xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 }
 
 void move_center(){
