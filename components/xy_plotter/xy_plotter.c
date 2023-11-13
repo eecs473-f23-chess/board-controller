@@ -320,6 +320,8 @@ void xyp_calibrate(){
         .clk_src = GPTIMER_CLK_SRC_DEFAULT,
         .direction = GPTIMER_COUNT_UP,
         .resolution_hz = TIMER_RESOLUTION,
+        .flags.intr_shared = 0,
+
     };
     ESP_ERROR_CHECK(gptimer_new_timer(&cal_timer_config, &cal_timer));
 
@@ -397,6 +399,9 @@ void xyp_calibrate(){
     y_stepper.current_board_pos = 9;
     stepper_set_board_pos(&y_stepper, 4.5);
     printf("finished move y to center\n");
+
+    // disable timer
+    ESP_ERROR_CHECK(gptimer_disable(cal_timer));
 }
 
 void move_center(){
