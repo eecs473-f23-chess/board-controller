@@ -38,5 +38,4 @@ void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(5000));
     printf("setting board pos to 5,5\n");
     xyp_set_board_pos(5,5);
-
 }
