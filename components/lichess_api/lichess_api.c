@@ -11,10 +11,14 @@
 #include "../clock_display/include/clock_display.h"     
 #include "../score_display/include/score_display.h"
 #include "wifi.h"
+#include "Buttons.h"
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
 #define AUTHORIZATION_HEADER    "Authorization"
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
+
+// Used to wait indefinetly until lichess game is created
+#define INCLUDE_vTaskSuspend 1
 
 static char GAME_ID[100] = {};
 static char last_move_played_by_opponent[5] = {};
@@ -36,6 +40,9 @@ static char opponent_country[5] = {};
 static esp_http_client_handle_t client;
 static esp_http_client_handle_t client_stream;
 
+
+static SemaphoreHandle_t xSemaphore_API;
+extern bool game_created;
 
 
 esp_err_t _http_event_handler(esp_http_client_event_t *evt)
@@ -463,7 +470,7 @@ void lichess_api_make_move(char user_move[]) {
     // if (!logged_in) {
     //     return;
     // }
-
+    xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     char URL[100] = "https://lichess.org/api/board/game/";
     char move[10] = "/move/";
     strcat(URL, GAME_ID);
@@ -482,9 +489,12 @@ void lichess_api_make_move(char user_move[]) {
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
     }
+    xSemaphoreGive(xSemaphore_API);
 }
 
 void lichess_api_stream_event() {
+    xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
+    printf("LICHESS_API_STREAM_EVENT SEMAPHORE_API\n");
     if (!logged_in) {
         return;
     }
@@ -526,10 +536,21 @@ void lichess_api_stream_event() {
     }
     
     printf("GAME ID: %s\n", GAME_ID);
+    game_created = true;
+    printf("Game created boolean is true\n");
+    xSemaphoreGive(xSemaphore_API);
+    lichess_api_stream_move_of_game();
 }
 
+<<<<<<< HEAD
 void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment, bool white) {
+=======
+void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
+    xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
+    printf("Lichess create game HAS SEMAPHORE API\n");
+>>>>>>> 4247ee6 (Make game seems to work, others in progress)
     if (!logged_in) {
+        printf("Can't create game. Login not detected\n");
         return;
     }
 
@@ -549,8 +570,6 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment, boo
     sprintf(min_as_string, "%d", minutes);
     strcat(fullMin, min_as_string);
     strcat(FULL_PARAMS, fullMin);
-
-
     strcat(FULL_PARAMS, "&variant=standard");
 
     if(white == true){
@@ -562,15 +581,13 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment, boo
     
     esp_http_client_set_url(client, URL);
     esp_http_client_set_method(client, HTTP_METHOD_POST);
-    esp_http_client_set_post_field(client, FULL_PARAMS, strlen(FULL_PARAMS));
     esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
-    
+    esp_http_client_set_post_field(client, FULL_PARAMS, strlen(FULL_PARAMS));
 
     const char* TAG = "LICHESS_CREATE_GAME";
-    printf("Full params length: %d\n", strlen(FULL_PARAMS));
+    printf("Full params: Length %d\n%s\n", strlen(FULL_PARAMS), FULL_PARAMS);
     esp_err_t err = esp_http_client_perform(client);
     printf("Response code %d\n", esp_http_client_get_status_code(client));
-
     ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
@@ -579,12 +596,14 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment, boo
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
     }
-
+    // TODO, Verify that this xSemaphoreGive is placed correctly
+    xSemaphoreGive(xSemaphore_API);
     lichess_api_stream_event();
 }
 
 void lichess_api_get_email(void)
 {
+    xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     if (!logged_in) {
         return;
     }
@@ -605,10 +624,13 @@ void lichess_api_get_email(void)
     } else {
         ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
     }
+    xSemaphoreGive(xSemaphore_API);
 }
 
 void lichess_api_get_account_info(void){
     const char* TAG = "LICHESS_ACCOUNT_INFO";
+    
+    printf("Inside lichess_get_account_info\n");
     esp_http_client_set_url(client, "https://lichess.org/api/account");
     esp_http_client_set_method(client, HTTP_METHOD_GET);    
     esp_http_client_set_header(client, "Content-Type", "application/json");
@@ -626,9 +648,11 @@ void lichess_api_get_account_info(void){
     printf("My username is %s\n", user_name);
     set_rating(response_buf);
     printf("My rating is %s\n", rating);
+    xSemaphoreGive(xSemaphore_API);
 }
 
 void lichess_api_init_client(void) {
+    xSemaphore_API = xSemaphoreCreateBinary();
     static const char* TAG = "LICHESS_INIT";
     client = esp_http_client_init(&config);
     logged_in = false;
@@ -638,7 +662,8 @@ void lichess_api_init_client(void) {
 // TODO, REPLACE THIS BACK
 void lichess_api_login(const char* token, const uint16_t token_len) {
     strcpy(bearer_token, "Bearer ");
-    // strncat(bearer_token, token, token_len);
+    // strncat(bearer_token, token, token_len);    
+    printf("Inside lichess_api_login\n");
     const char* replace = "lip_EFm5BNTU3XP4nvczcv1a";
     size_t len = strlen(replace) + 1;
     strncat(bearer_token, replace, len);
@@ -658,6 +683,7 @@ bool lichess_api_is_logged_in() {
 }
 
 void lichess_api_resign_game(){
+    printf("Inside lichess_api_resign_game\n");
     const char* TAG = "LICHESS_RESIGN_GAME";
     char URL[100] = "https://lichess.org/api/board/game/";
     strcat(URL, GAME_ID);
@@ -667,27 +693,38 @@ void lichess_api_resign_game(){
     esp_http_client_set_header(client, "Content-Type", "application/json");
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
+        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
                 esp_http_client_get_status_code(client),
                 esp_http_client_get_content_length(client));
     } else {
-        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
     }
 }
 
 void lichess_api_handle_draw(){
+    xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
+    
+    printf("Inside lichess_api_handle_draw\n");
     const char* TAG = "LICHESS_HANDLE_DRAW";
     char URL[100] = "https://lichess.org/api/board/game/";
     strcat(URL, GAME_ID);
+<<<<<<< HEAD
     strcat(URL, "/draw/yes");
+=======
+    strcat(URL, "/draw/");
+    strcat(URL, "yes");
+>>>>>>> 4247ee6 (Make game seems to work, others in progress)
 
     esp_http_client_set_url(client, URL);
     esp_http_client_set_method(client, HTTP_METHOD_POST);    
     esp_http_client_set_header(client, "Content-Type", "application/json");
     esp_err_t err = esp_http_client_perform(client);
+    xSemaphoreGive(xSemaphore_API);
 }
 
 void lichess_api_stream_move_of_game(void *pvParameters) {
+    xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
+    printf("Inside Lichess_api_stream_move_of_game\n");
     static const char* TAG = "LICHESS STREAM MOVE";
 
     // TODO, uncomment this after done
@@ -726,10 +763,12 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             break;
         }
         char stream_data[1500] = {};
+        int curr_stream_data_len = 0;
         char buffer[1000] = {};
         while(buffer[0] != '\n'){
             esp_http_client_read(client_stream, buffer, 1);
-            stream_data[strlen(stream_data)] = buffer[0];
+            stream_data[curr_stream_data_len] = buffer[0];
+            curr_stream_data_len += 1;
         }
         if(strlen(stream_data) > 1){
             printf("Stream is %s\n", stream_data);
@@ -754,6 +793,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 char p2[5] = "1/2";
                 scoreboard_WinUpdate(p1, p2);
                 printf("Game Ended: %s\n", result);
+                game_created = false;
                 break;
             }
             else if(strcmp(result, "0-1 (Black wins)") == 0){
@@ -762,6 +802,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                     char p2[5] = "1";
                     scoreboard_WinUpdate(p1, p2);
                     printf("Game Ended: Black wins. 0-1\n");
+                    game_created = false;
                     break;
             }
             else if(strcmp(result, "1-0 (White wins)") == 0){
@@ -770,6 +811,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                     char p2[5] = "0";
                     scoreboard_WinUpdate(p1, p2);
                     printf("Game Ended: White wins. 1-0\n");
+                    game_created = false;
                     break;
             }
             else{
@@ -791,5 +833,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             our_turn = our_turn ^ 1;           
         }
     }
+    xSemaphoreGive(xSemaphore_API);
     vTaskDelete(NULL);
 }

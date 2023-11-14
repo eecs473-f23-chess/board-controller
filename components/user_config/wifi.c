@@ -50,8 +50,16 @@ void wifi_init() {
     is_connected = false;
     ssid_set = false;
     pw_set = false;
-    char *ssid_replace = "Braeden's Galaxy S22 Ultra";
-    char *pwd_replace = "sefk6040";
+    // char *ssid_replace = "Braeden's Galaxy S22 Ultra";
+    // char *pwd_replace = "sefk6040";
+    
+    char *ssid_replace = "AiPhone";
+    char *pwd_replace = "password";
+
+    printf("Wifi: %s | Pass: %s\n", ssid_replace, pwd_replace);
+
+    // char *ssid_replace = "Aditya's iPhone (3)";
+    // char *pwd_replace = "testingone";
 
     for(int i = 0; i < strlen(ssid_replace); i++){
         ssid[i] = ssid_replace[i];
