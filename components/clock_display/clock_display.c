@@ -47,10 +47,14 @@ void GraphicLCD_data_write(unsigned char d, bool left) // Data Output Serial Int
   if(left){
     gpio_set_level((gpio_num_t)(CS_C2), LOW);
     gpio_set_level((gpio_num_t)RS_C2, HIGH);
+
+    gpio_set_level((gpio_num_t)(CS_C1), HIGH);
   }
   else{
     gpio_set_level((gpio_num_t)(CS_C1), LOW);
     gpio_set_level((gpio_num_t)RS_C1, HIGH);
+    
+    gpio_set_level((gpio_num_t)(CS_C2), HIGH);
   }
   for (n = 0; n < 8; n++)
   {
@@ -80,10 +84,16 @@ void GraphicLCD_comm_write(unsigned char d, bool left) // Command Output Serial 
   if(left){
     gpio_set_level((gpio_num_t)CS_C2, LOW);
     gpio_set_level((gpio_num_t)RS_C2, LOW);
+
+    gpio_set_level((gpio_num_t)CS_C1, HIGH);
+    // gpio_set_level((gpio_num_t)RS_C1, HIGH);
   }
   else{
     gpio_set_level((gpio_num_t)CS_C1, LOW);
     gpio_set_level((gpio_num_t)RS_C1, LOW);
+
+    gpio_set_level((gpio_num_t)CS_C2, HIGH);
+    // gpio_set_level((gpio_num_t)RS_C2, HIGH);
   }
   
   for (n = 0; n < 8; n++)
@@ -216,94 +226,14 @@ void GraphicLCD_DispClock(int ms, bool left)
 void decrement_time(void * pvParameters){
   TickType_t xLastWakeTime = xTaskGetTickCount();
   while(1){
-    if(our_turn && P1_time != 0){
-      P1_time -= 1000;
-      GraphicLCD_DispClock(P1_time, our_turn);
+    if(our_turn && white_time != -1){
+      white_time -= 1000;
+      GraphicLCD_DispClock(white_time, our_turn);
     }
-    else if(!our_turn && P2_time != 0){
-      P2_time -= 1000;
-      GraphicLCD_DispClock(P2_time, our_turn);
+    else if(!our_turn && black_time != -1){
+      black_time -= 1000;
+      GraphicLCD_DispClock(black_time, our_turn);
     }
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
   }
 }
-
-
-
-// GraphicLCD_init_LCD();
-//     vTaskDelay(pdMS_TO_TICKS(1000));
-//     int hours = 0;
-//     int tens_minutes = 0;
-//     int ones_minutes = 1;
-//     int tens_seconds = 0;
-//     int ones_seconds = 1;
-//     //While loop is for clock logic
-//     while(hours + tens_minutes +tens_seconds +ones_minutes + ones_seconds != 3){
-//         if(ones_seconds == 0){
-//             ones_seconds = 9;
-//             if(tens_seconds == 0){
-//                 tens_seconds = 5;
-//                 if(ones_minutes == 0){
-//                     ones_minutes = 9;
-//                     if(tens_minutes == 0 && hours !=0){
-//                         tens_minutes = 5;
-//                         hours -= 1;
-//                     }
-//                     else{
-//                         tens_minutes -= 1;
-//                     }
-                    
-//                 }
-//                 else{
-//                     ones_minutes -= 1;
-//                 }
-//             }
-//             else{
-//                 tens_seconds -= 1;
-//             }
-//         }
-//         else{
-//             ones_seconds -=1;
-//         }
-//         vTaskDelay(pdMS_TO_TICKS(1000));
-//         GraphicLCD_DispClock(hours, tens_minutes, ones_minutes, tens_seconds, ones_seconds, true);
-//         //vTaskDelay(pdMS_TO_TICKS(500));
-//     }
-
-//     hours = 0;
-//     tens_minutes = 0;
-//     ones_minutes = 1;
-//     tens_seconds = 0;
-//     ones_seconds = 1;
-
-//     while(hours + tens_minutes +tens_seconds +ones_minutes + ones_seconds != 0){
-//         if(ones_seconds == 0){
-//             ones_seconds = 9;
-//             if(tens_seconds == 0){
-//                 tens_seconds = 5;
-//                 if(ones_minutes == 0){
-//                     ones_minutes = 9;
-//                     if(tens_minutes == 0 && hours !=0){
-//                         tens_minutes = 5;
-//                         hours -= 1;
-//                     }
-//                     else{
-//                         tens_minutes -= 1;
-//                     }
-                    
-//                 }
-//                 else{
-//                     ones_minutes -= 1;
-//                 }
-//             }
-//             else{
-//                 tens_seconds -= 1;
-//             }
-//         }
-//         else{
-//             ones_seconds -=1;
-//         }
-//         vTaskDelay(pdMS_TO_TICKS(1000));
-//         GraphicLCD_DispClock(hours, tens_minutes, ones_minutes, tens_seconds, ones_seconds, false);
-//         //vTaskDelay(pdMS_TO_TICKS(500));
-//     }

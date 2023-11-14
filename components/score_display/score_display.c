@@ -72,7 +72,6 @@ Program for writing to Newhaven Display character LCD
 */
 
 #include "score_display.h"
-
 void scoreboard_command(char i){
   gpio_set_level(E, HIGH);
   gpio_set_level(RS, LOW);

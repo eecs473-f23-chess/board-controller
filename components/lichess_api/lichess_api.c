@@ -10,6 +10,7 @@
 
 #include "../clock_display/include/clock_display.h"     
 #include "../score_display/include/score_display.h"
+#include "wifi.h"
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
 #define AUTHORIZATION_HEADER    "Authorization"
@@ -27,8 +28,8 @@ static bool logged_in;
 static bool move_update = false;
 static bool want_moves = false;
 static bool draw_has_been_offered = false;
-static uint32_t white_time = -1;
-static uint32_t black_time = -1;
+uint32_t white_time = -1;
+uint32_t black_time = -1;
 static char opponent_username[100] = {};
 static char opponent_rating[5] = {};
 static char opponent_country[5] = {};
@@ -517,11 +518,17 @@ void lichess_api_stream_event() {
     printf("Opponent rating: %s\n", opponent_rating);
     printf("Opponent country %s\n", opponent_country);
 
-    scoreboard_Chess_Setup(user_name, opponent_username, country, opponent_country, rating, opponent_rating);
+    if(strcmp(getColor(), "white") == 0){
+        scoreboard_Chess_Setup(user_name, opponent_username, country, opponent_country, rating, opponent_rating);
+    }
+    else{
+        scoreboard_Chess_Setup(opponent_username, user_name, opponent_country, country, opponent_rating, rating);
+    }
+    
     printf("GAME ID: %s\n", GAME_ID);
 }
 
-void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
+void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment, bool white) {
     if (!logged_in) {
         return;
     }
@@ -545,6 +552,13 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
 
 
     strcat(FULL_PARAMS, "&variant=standard");
+
+    if(white == true){
+        strcat(FULL_PARAMS, "&color=white");
+    }
+    else{
+        strcat(FULL_PARAMS, "&color=black");
+    }    
     
     esp_http_client_set_url(client, URL);
     esp_http_client_set_method(client, HTTP_METHOD_POST);
@@ -592,7 +606,6 @@ void lichess_api_get_email(void)
         ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
     }
 }
-
 
 void lichess_api_get_account_info(void){
     const char* TAG = "LICHESS_ACCOUNT_INFO";
@@ -666,8 +679,7 @@ void lichess_api_handle_draw(){
     const char* TAG = "LICHESS_HANDLE_DRAW";
     char URL[100] = "https://lichess.org/api/board/game/";
     strcat(URL, GAME_ID);
-    strcat(URL, "/draw");
-    strcat(URL, "yes");
+    strcat(URL, "/draw/yes");
 
     esp_http_client_set_url(client, URL);
     esp_http_client_set_method(client, HTTP_METHOD_POST);    
@@ -709,6 +721,10 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
     esp_http_client_fetch_headers(client_stream);
     want_moves = true;
     while(1){        
+        if(!wifi_is_connected()){
+            ESP_LOGE(TAG, "WIFI DISCONNECTED");
+            break;
+        }
         char stream_data[1500] = {};
         char buffer[1000] = {};
         while(buffer[0] != '\n'){
@@ -741,7 +757,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 break;
             }
             else if(strcmp(result, "0-1 (Black wins)") == 0){
-                    want_moves = false;
+                    want_moves = false;                    
                     char p1[5] = "0";
                     char p2[5] = "1";
                     scoreboard_WinUpdate(p1, p2);
@@ -765,14 +781,10 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             printf("White has %lu time\n", white_time);
             printf("Black has %lu time\n", black_time);
             if(strcmp(getColor(), "white") == 0){ 
-                P1_time = white_time;
-                P2_time = black_time;
                 GraphicLCD_DispClock(white_time, true);
                 GraphicLCD_DispClock(black_time, false);
             }
-            else{
-                P1_time = black_time;
-                P2_time = white_time;                
+            else{             
                 GraphicLCD_DispClock(white_time, false);
                 GraphicLCD_DispClock(black_time, true);
             }

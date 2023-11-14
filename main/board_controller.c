@@ -16,11 +16,10 @@
 #include "score_display.h"
 #include "xy_plotter.h"
 #include "electromagnet.h"
+#include "board_state.h"
 
-int P1_time; //Tracks our time
-int P2_time; //Tracks opponents time
 bool our_turn; // Track whose move it is, should be switched every turn
-
+Board chess_board[8][8];
 
 void app_main(void)
 {
