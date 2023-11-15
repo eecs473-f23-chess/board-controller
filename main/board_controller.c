@@ -14,14 +14,11 @@
 #include "mobile_app_ble.h"
 #include "clock_display.h"
 #include "score_display.h"
-<<<<<<< HEAD
 #include "xy_plotter.h"
 #include "electromagnet.h"
 #include "board_state.h"
-=======
 #include "Buttons.h"
 #include "freertos/semphr.h"
->>>>>>> 4247ee6 (Make game seems to work, others in progress)
 
 bool our_turn; // Track whose move it is, should be switched every turn
 int var = 0;
@@ -41,6 +38,7 @@ void lichess_api_resign_game_helper(){
     for(;;){
         xSemaphoreTake(xSemaphore_Resign, portMAX_DELAY);
         lichess_api_resign_game();
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 
@@ -93,7 +91,7 @@ void app_main(void)
     lichess_api_login(token_fake, 10);
     xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 4, NULL);
     xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 5, NULL);  
-    xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
+    // xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
     
     
     // mobile_app_ble_init();

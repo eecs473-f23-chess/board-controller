@@ -10,6 +10,7 @@ extern int var;
 extern SemaphoreHandle_t xSemaphore;
 extern SemaphoreHandle_t xSemaphore_Resign;
 extern SemaphoreHandle_t xSemaphore_Draw;
+extern SemaphoreHandle_t xSemaphore_DataTransfer;
 
 >>>>>>> 4247ee6 (Make game seems to work, others in progress)
 

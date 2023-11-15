@@ -21,6 +21,7 @@
 #define INCLUDE_vTaskSuspend 1
 
 static char GAME_ID[100] = {};
+static char FULL_ID[100] = {};
 static char last_move_played_by_opponent[5] = {};
 static char response_buf[2000] = {};
 static char color[10] = {};
@@ -42,6 +43,7 @@ static esp_http_client_handle_t client_stream;
 
 
 static SemaphoreHandle_t xSemaphore_API;
+SemaphoreHandle_t xSemaphore_DataTransfer;
 extern bool game_created;
 
 
@@ -62,7 +64,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
             break;
         case HTTP_EVENT_ON_HEADER:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
-            break;
+                        break;
         case HTTP_EVENT_ON_DATA:
             sleep(0.3);
             ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d\n", evt->data_len);
@@ -184,8 +186,12 @@ void set_game_id(const char *json_str) {
     }
     cJSON *game = cJSON_GetObjectItem(root, "game");
     cJSON *gameId = cJSON_GetObjectItem(game, "gameId");
+    cJSON *fullId = cJSON_GetObjectItem(game, "fullId");
     for(int i = 0; i < strlen(gameId->valuestring); i++){
         GAME_ID[i] = (gameId->valuestring)[i];
+    }
+    for(int i = 0; i < strlen(fullId->valuestring); i++){
+        FULL_ID[i] = (fullId->valuestring)[i];
     }
     cJSON_Delete(root);
 }
@@ -634,6 +640,8 @@ void lichess_api_get_account_info(void){
     esp_http_client_set_url(client, "https://lichess.org/api/account");
     esp_http_client_set_method(client, HTTP_METHOD_GET);    
     esp_http_client_set_header(client, "Content-Type", "application/json");
+    char test_client_header[100] = {};
+    esp_http_client_get_header(client, "Content-Type", test_client_header);
     esp_err_t err = esp_http_client_perform(client);
     // ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client), response_buf);
 
@@ -653,6 +661,8 @@ void lichess_api_get_account_info(void){
 
 void lichess_api_init_client(void) {
     xSemaphore_API = xSemaphoreCreateBinary();
+    xSemaphore_DataTransfer = xSemaphoreCreateBinary();
+    xSemaphoreGive(xSemaphore_DataTransfer);
     static const char* TAG = "LICHESS_INIT";
     client = esp_http_client_init(&config);
     logged_in = false;
@@ -683,15 +693,27 @@ bool lichess_api_is_logged_in() {
 }
 
 void lichess_api_resign_game(){
+    // if(strlen(GAME_ID) == 0){
+    //     printf("lichess_api_resign_game. GAME ID IS NOT SET\n");
+    //     return;
+    // }
     printf("Inside lichess_api_resign_game\n");
     const char* TAG = "LICHESS_RESIGN_GAME";
+    
+    // char TEST_GAME[100] = "w6jbDnGg";
     char URL[100] = "https://lichess.org/api/board/game/";
-    strcat(URL, GAME_ID);
-    strcat(URL, "/resign");
+    strncat(URL, GAME_ID, strlen(GAME_ID));
+    char last[10] = "/resign";
+    strncat(URL, last, strlen(last));
+
+
+    xSemaphoreTake(xSemaphore_DataTransfer, portMAX_DELAY);
     esp_http_client_set_url(client, URL);
-    esp_http_client_set_method(client, HTTP_METHOD_POST);    
-    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_method(client, HTTP_METHOD_POST); 
+    esp_http_client_set_header(client, "Content-Type", "text/plain");
     esp_err_t err = esp_http_client_perform(client);
+    xSemaphoreGive(xSemaphore_DataTransfer);
+
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
                 esp_http_client_get_status_code(client),
@@ -757,7 +779,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
 
     esp_http_client_fetch_headers(client_stream);
     want_moves = true;
-    while(1){        
+    while(1){ 
         if(!wifi_is_connected()){
             ESP_LOGE(TAG, "WIFI DISCONNECTED");
             break;
@@ -766,9 +788,11 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
         int curr_stream_data_len = 0;
         char buffer[1000] = {};
         while(buffer[0] != '\n'){
+            xSemaphoreTake(xSemaphore_DataTransfer, portMAX_DELAY);
             esp_http_client_read(client_stream, buffer, 1);
             stream_data[curr_stream_data_len] = buffer[0];
             curr_stream_data_len += 1;
+            xSemaphoreGive(xSemaphore_DataTransfer);
         }
         if(strlen(stream_data) > 1){
             printf("Stream is %s\n", stream_data);
@@ -823,16 +847,19 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             printf("White has %lu time\n", white_time);
             printf("Black has %lu time\n", black_time);
             if(strcmp(getColor(), "white") == 0){ 
+                portDISABLE_INTERRUPTS();
                 GraphicLCD_DispClock(white_time, true);
                 GraphicLCD_DispClock(black_time, false);
+                portENABLE_INTERRUPTS();
             }
             else{             
+                portDISABLE_INTERRUPTS();
                 GraphicLCD_DispClock(white_time, false);
                 GraphicLCD_DispClock(black_time, true);
+                portENABLE_INTERRUPTS();
             }
             our_turn = our_turn ^ 1;           
         }
     }
     xSemaphoreGive(xSemaphore_API);
-    vTaskDelete(NULL);
 }
