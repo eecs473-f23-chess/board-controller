@@ -20,6 +20,8 @@
 #include "Buttons.h"
 #include "freertos/semphr.h"
 
+#define configTOTAL_HEAP_SIZE 10240
+
 bool our_turn; // Track whose move it is, should be switched every turn
 int var = 0;
 SemaphoreHandle_t xSemaphore;
@@ -46,9 +48,9 @@ void app_main(void)
         const char token_fake = "fake";
         lichess_api_login(token_fake, 10);
         xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 5, NULL);
-        xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 5, NULL);
-        xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 5, NULL);
-        xTaskCreate(&lichess_api_make_move_helper, "Make a move for lichess game", 4096, NULL, 5, NULL);
+        xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 4, NULL);
+        xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
+        xTaskCreate(&lichess_api_make_move_helper, "Make a move for lichess game", 4096, NULL, 4, NULL);
         xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, NULL);
         // lichess_api_stream_move_of_game();
         

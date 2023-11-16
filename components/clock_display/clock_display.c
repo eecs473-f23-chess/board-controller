@@ -227,16 +227,12 @@ void decrement_time(void * pvParameters){
   TickType_t xLastWakeTime = xTaskGetTickCount();
   while(1){
     if(our_turn && white_time != -1){
-      portDISABLE_INTERRUPTS();
       white_time -= 1000;
       GraphicLCD_DispClock(white_time, our_turn);
-      portENABLE_INTERRUPTS();
     }
     else if(!our_turn && black_time != -1){
-      portDISABLE_INTERRUPTS();
       black_time -= 1000;
       GraphicLCD_DispClock(black_time, our_turn);
-      portENABLE_INTERRUPTS();
     }
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
   }

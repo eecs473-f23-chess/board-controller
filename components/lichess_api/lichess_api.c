@@ -17,6 +17,7 @@
 #define AUTHORIZATION_HEADER    "Authorization"
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
+
 // Used to wait indefinetly until lichess game is created
 #define INCLUDE_vTaskSuspend 1
 
@@ -497,6 +498,8 @@ void lichess_api_make_move(char user_move[]) {
         printf("Game isn't active. Can't make a move!");
         return;
     }
+
+    printf("INSIDE LICHESS_MAKE_MOVE\n");
     char URL[100] = "https://lichess.org/api/board/game/";
     char move[10] = "/move/";
     strcat(URL, GAME_ID);
@@ -565,9 +568,11 @@ void lichess_api_stream_event() {
     printf("Opponent country %s\n", opponent_country);
 
     if(strcmp(getColor(), "white") == 0){
+        our_turn = true;
         scoreboard_Chess_Setup(user_name, opponent_username, country, opponent_country, rating, opponent_rating);
     }
     else{
+        our_turn = false;
         scoreboard_Chess_Setup(opponent_username, user_name, opponent_country, country, opponent_rating, rating);
     }
     
@@ -929,8 +934,8 @@ void lichess_api_stream_move_of_game() {
             }
             else if(strcmp(result, "0-1 (Black wins)") == 0){
                     want_moves = false;                    
-                    char p1[5] = "0";
-                    char p2[5] = "1";
+                    char p1[2] = "0";
+                    char p2[2] = "1";
                     scoreboard_DrawDeclined();
                     scoreboard_WinUpdate(p1, p2);
                     printf("Game Ended: Black wins. 0-1\n");
@@ -939,8 +944,8 @@ void lichess_api_stream_move_of_game() {
             }
             else if(strcmp(result, "1-0 (White wins)") == 0){
                     want_moves = false;
-                    char p1[5] = "1";
-                    char p2[5] = "0";
+                    char p1[2] = "1";
+                    char p2[2] = "0";
                     scoreboard_DrawDeclined();
                     scoreboard_WinUpdate(p1, p2);
                     printf("Game Ended: White wins. 1-0\n");

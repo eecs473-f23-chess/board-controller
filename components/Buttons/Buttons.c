@@ -47,7 +47,6 @@ void buttons_init(){
 }
 
 void IRAM_ATTR draw_button(void * arg){
-    // TODO, uncomment once button is successfully called
     xSemaphoreGiveFromISR(xSemaphore_Draw, NULL);
 }
 
