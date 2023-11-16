@@ -23,6 +23,6 @@ void scoreboard_SetLineEnd(int line, int strlen);
 void scoreboard_clearline(int line);
 void scoreboard_Chess_Setup(char name1[], char name2[], char country1[], char country2[], char rank1[], char rank2[]);
 void scoreboard_OfferDraw(bool LtR);
-void scoreboard_DrawStatus(bool accepted);
+void scoreboard_DrawDeclined();
 void scoreboard_WinUpdate(char P1wins[], char P2wins[]);
 void scoreboard_clear();

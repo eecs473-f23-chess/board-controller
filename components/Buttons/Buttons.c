@@ -42,19 +42,16 @@ void buttons_init(){
     gpio_isr_handler_add(19, make_game_button, (void*) 0);
     // 1 is making game as black
     gpio_isr_handler_add(20, make_game_button, (void*) 1);
-    // gpio_isr_handler_add(18, clock_button, (void*) 0);
+    gpio_isr_handler_add(18, clock_button, (void*) 0);
     printf("Button init finished\n");
 }
 
 void IRAM_ATTR draw_button(void * arg){
     // TODO, uncomment once button is successfully called
-    var += 1;
-    vTaskDelay(pdMS_TO_TICKS(5));
     xSemaphoreGiveFromISR(xSemaphore_Draw, NULL);
 }
 
 void IRAM_ATTR resign_button(void * arg){
-    vTaskDelay(pdMS_TO_TICKS(5));
     xSemaphoreGiveFromISR(xSemaphore_Resign, NULL);
 }
 
@@ -77,5 +74,5 @@ void IRAM_ATTR make_game_button(void * arg){
 }
 
 void IRAM_ATTR clock_button(void * arg){
-    printf("Called clock_button\n");
+    xSemaphoreGiveFromISR(xSemaphore_MakeMove, NULL);
 }

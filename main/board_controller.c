@@ -25,41 +25,8 @@ int var = 0;
 SemaphoreHandle_t xSemaphore;
 SemaphoreHandle_t xSemaphore_Resign;
 SemaphoreHandle_t xSemaphore_Draw;
+SemaphoreHandle_t xSemaphore_MakeMove;
 bool game_created = false;
-
-void lichess_api_create_game_helper(){
-    for(;;){
-        xSemaphoreTake(xSemaphore, portMAX_DELAY);
-        lichess_api_create_game(true, 15, 5);
-    }    
-}
-
-void lichess_api_resign_game_helper(){
-    for(;;){
-        xSemaphoreTake(xSemaphore_Resign, portMAX_DELAY);
-        lichess_api_resign_game();
-        vTaskDelay(pdMS_TO_TICKS(20));
-    }
-}
-
-void lichess_api_handle_draw_helper(){
-    for(;;){
-        xSemaphoreTake(xSemaphore_Draw, portMAX_DELAY);
-        lichess_api_handle_draw();
-    }
-}
-
-// TODO, not used as of right now
-void lichess_stream_game_moves_helper(){
-    for(;;){
-        if(game_created){
-            printf("Game created. Entering now\n");
-            lichess_api_stream_move_of_game();
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    
-}
 
 void app_main(void)
 {
@@ -67,6 +34,7 @@ void app_main(void)
         xSemaphore = xSemaphoreCreateBinary();        
         xSemaphore_Draw = xSemaphoreCreateBinary();
         xSemaphore_Resign = xSemaphoreCreateBinary();
+        xSemaphore_MakeMove = xSemaphoreCreateBinary();
         nvs_flash_init();
         wifi_init();
         GraphicLCD_init_LCD();
@@ -77,9 +45,11 @@ void app_main(void)
         lichess_api_init_client();
         const char token_fake = "fake";
         lichess_api_login(token_fake, 10);
-        xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 4, NULL);
+        xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 5, NULL);
         xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 5, NULL);
-        xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
+        xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 5, NULL);
+        xTaskCreate(&lichess_api_make_move_helper, "Make a move for lichess game", 4096, NULL, 5, NULL);
+        xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, NULL);
         // lichess_api_stream_move_of_game();
         
 
@@ -114,6 +84,7 @@ void app_main(void)
         xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 5, NULL);  
     */
     // xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
+    
     
     
     // mobile_app_ble_init();
