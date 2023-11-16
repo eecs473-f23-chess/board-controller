@@ -63,12 +63,33 @@ void lichess_stream_game_moves_helper(){
 
 void app_main(void)
 {
+    // TODO: Manual game testing integration
+        xSemaphore = xSemaphoreCreateBinary();        
+        xSemaphore_Draw = xSemaphoreCreateBinary();
+        xSemaphore_Resign = xSemaphoreCreateBinary();
+        nvs_flash_init();
+        wifi_init();
+        GraphicLCD_init_LCD();
+        scoreboard_init();
+        buttons_init();
 
-    xSemaphore = xSemaphoreCreateBinary();
-    xSemaphore_Resign = xSemaphoreCreateBinary();
-    xSemaphore_Draw = xSemaphoreCreateBinary();
-    nvs_flash_init();
+        wifi_connect();
+        lichess_api_init_client();
+        const char token_fake = "fake";
+        lichess_api_login(token_fake, 10);
+        xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 4, NULL);
+        xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 5, NULL);
+        xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
+        // lichess_api_stream_move_of_game();
+        
 
+    /*
+        TODO: Total Testing integration
+        xSemaphore = xSemaphoreCreateBinary();
+        xSemaphore_Resign = xSemaphoreCreateBinary();
+        xSemaphore_Draw = xSemaphoreCreateBinary();
+        nvs_flash_init();
+    
 #ifdef XYP_JOYSTICK_TEST
     xyp_init();
     electromag_init();
@@ -81,16 +102,17 @@ void app_main(void)
     xyp_calibrate();
     printf("finished calibration\n");
     wifi_init();
-    GraphicLCD_init_LCD();
-    scoreboard_init();
-    buttons_init();
+        GraphicLCD_init_LCD();
+        scoreboard_init();
+        buttons_init();
 
-    wifi_connect();
-    lichess_api_init_client();
-    const char token_fake = "fake";
-    lichess_api_login(token_fake, 10);
-    xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 4, NULL);
-    xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 5, NULL);  
+        wifi_connect();
+        lichess_api_init_client();
+        const char token_fake = "fake";
+        lichess_api_login(token_fake, 10);
+        xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 4, NULL);
+        xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 5, NULL);  
+    */
     // xTaskCreate(&decrement_time, "Clock", 2048, NULL, 1, NULL);
     
     
