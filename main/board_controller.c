@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <wifi.h>
 
-#include "types.h"
 #include "lichess_api.h"
 #include "mobile_app_ble.h"
 #include "clock_display.h"
@@ -25,18 +24,16 @@ void app_main(void)
 {
     nvs_flash_init();
     xyp_init();
-    printf("finished xpy init\n");
-    vTaskDelay(pdMS_TO_TICKS(500));
+    electromag_init();
 
-    printf("starting calibration\n");
-    xyp_calibrate();
-    printf("finished calibration\n");
+    //xyp_calibrate();
+    vTaskDelay(pdMS_TO_TICKS(2000));
 
-    vTaskDelay(pdMS_TO_TICKS(5000));
-
-    printf("setting board pos to 2,2\n");
     xyp_set_board_pos(2,2);
+    electromagnet_on(BLACK);
     vTaskDelay(pdMS_TO_TICKS(5000));
-    printf("setting board pos to 5,5\n");
+    xyp_set_board_pos(2, 7);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    electromagnet_off();
     xyp_set_board_pos(5,5);
 }

@@ -1,10 +1,8 @@
 #include "electromagnet.h"
 
-#include "types.h"
-#include "driver/gpio.h"
-#include "freertos/FreeRTOS.h"
+#include <driver/gpio.h>
+#include <freertos/FreeRTOS.h>
 #include <stdio.h>
-//#include "freertos/timers.h"
 
 #define LOW 0
 #define HIGH 1

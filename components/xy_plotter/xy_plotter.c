@@ -15,15 +15,15 @@
 #define Y_DIR_GPIO              36
 #define Y_STEP_GPIO             37
 #define LIMITX_GPIO             41
-#define LIMITY_GPIO             42 
-#define X_ENBL_GPIO             43
-#define Y_ENBL_GPIO             2
+#define LIMITY_GPIO             42
+#define X_ENBL_GPIO             2
+#define Y_ENBL_GPIO             44
 
 // Alarm/timer config
 #define TIMER_RESOLUTION        1e6 // 1Mhz
 #define ALARM_PERIOD            1e-3 // 1ms 
 #define ALARM_COUNT             TIMER_RESOLUTION * ALARM_PERIOD
-#define CAL_ALARM_COUNT         ALARM_COUNT 
+#define CAL_ALARM_COUNT         ALARM_COUNT
 
 // Stepper motors
 #define STEPS_PER_REVOLUTION    200
@@ -33,8 +33,8 @@
 
 // Chess board
 #define SQUARE_SIZE             2.5
-#define X_LIMIT_OFFSET_SQUARES  9.2
-#define Y_LIMIT_OFFSET_SQUARES  9
+#define X_LIMIT_OFFSET_SQUARES  1.2
+#define Y_LIMIT_OFFSET_SQUARES  1.0
 
 // Event group bits
 #define X_BIT                   BIT0
@@ -45,8 +45,8 @@
 #define LOW                     0
 
 // direction gpio levels
-#define LEFT_DIR    1
-#define RIGHT_DIR   0
+#define LEFT_DIR    0
+#define RIGHT_DIR   1
 
 struct xyp_stepper {
     gptimer_handle_t timer;
@@ -241,7 +241,7 @@ bool calibration_timer_callback(gptimer_handle_t timer, const gptimer_alarm_even
 void ensure_no_limit_switch(gptimer_handle_t timer) {
     if(!gpio_get_level(LIMITX_GPIO)) {
         current_axis = X_AXIS;
-        gpio_set_level(x_stepper.dir_gpio, LEFT_DIR);
+        gpio_set_level(x_stepper.dir_gpio, RIGHT_DIR);
         x_stepper.steps_remaining = INCHES_TO_STEPS(2);
         gpio_set_level(x_stepper.enbl_gpio, LOW);
         gptimer_start(timer);
@@ -250,7 +250,7 @@ void ensure_no_limit_switch(gptimer_handle_t timer) {
     }
     if(!gpio_get_level(LIMITY_GPIO)) {
         current_axis = Y_AXIS;
-        gpio_set_level(y_stepper.dir_gpio, LEFT_DIR);
+        gpio_set_level(y_stepper.dir_gpio, RIGHT_DIR);
         y_stepper.steps_remaining = INCHES_TO_STEPS(2);
         gpio_set_level(x_stepper.enbl_gpio, LOW);
         gptimer_start(timer);
@@ -294,7 +294,7 @@ void xyp_calibrate(){
     current_move = LIMIT_MOVE;
     current_axis = X_AXIS;
     current_switch = LIMITX_GPIO;
-    gpio_set_level(x_stepper.dir_gpio, RIGHT_DIR);
+    gpio_set_level(x_stepper.dir_gpio, LEFT_DIR);
     gpio_set_level(x_stepper.enbl_gpio, LOW);
     gptimer_start(cal_timer);
     xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
@@ -305,7 +305,7 @@ void xyp_calibrate(){
     current_move = LIMIT_MOVE;
     current_axis = Y_AXIS;
     current_switch = LIMITY_GPIO;
-    gpio_set_level(y_stepper.dir_gpio, RIGHT_DIR);
+    gpio_set_level(y_stepper.dir_gpio, LEFT_DIR);
     gpio_set_level(y_stepper.enbl_gpio, LOW);
     gptimer_start(cal_timer);
     xEventGroupWaitBits(xy_calibration_event_group, CAL_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
