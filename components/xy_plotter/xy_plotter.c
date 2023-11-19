@@ -1,5 +1,8 @@
 #include "xy_plotter.h"
 
+#ifdef XYP_JOYSTICK_TEST
+#include <driver/adc.h>
+#endif
 #include <driver/gpio.h>
 #include <driver/gptimer.h>
 #include <esp_log.h>
@@ -18,6 +21,10 @@
 #define LIMITY_GPIO             42
 #define X_ENBL_GPIO             2
 #define Y_ENBL_GPIO             44
+#ifdef XYP_JOYSTICK_TEST
+#define X_JOYSTICK_GPIO         19
+#define Y_JOYSTICK_GPIO         20
+#endif
 
 // Alarm/timer config
 #define TIMER_RESOLUTION        1e6 // 1Mhz
@@ -57,6 +64,10 @@ struct xyp_stepper {
     uint32_t steps_remaining;
     uint8_t step_state;
     uint8_t event_group_bit;
+#ifdef XYP_JOYSTICK_TEST
+    adc2_channel_t joystick_channel;
+    int32_t current_steps;
+#endif
 };
 
 typedef enum CAL_STEPPER_MOVE {
@@ -84,8 +95,7 @@ cal_stepper_move_t current_move;
 cal_axis_t current_axis;
 gpio_num_t current_switch;
 
-
-bool on_alarm_event(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
+bool move_timer_callback(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
     struct xyp_stepper* stepper = NULL;
     if (timer == x_stepper.timer) {
         stepper = &x_stepper;
@@ -99,6 +109,30 @@ bool on_alarm_event(gptimer_handle_t timer, const gptimer_alarm_event_data_t *ed
 
     stepper->step_state = !stepper->step_state;
     gpio_set_level(stepper->step_gpio, stepper->step_state);
+
+#ifdef XYP_JOYSTICK_TEST
+    int joystick_raw;
+    adc2_get_raw(stepper->joystick_channel, ADC_WIDTH_BIT_12, &joystick_raw);
+    if (joystick_raw < 826) {
+        gpio_set_level(stepper->dir_gpio, LEFT_DIR);
+        gpio_set_level(stepper->enbl_gpio, LOW);
+
+        if (stepper->step_state == LOW) {
+            --stepper->current_steps;
+        }
+    }
+    else if (joystick_raw > 2477) {
+        gpio_set_level(stepper->dir_gpio, RIGHT_DIR);
+        gpio_set_level(stepper->enbl_gpio, LOW);
+
+        if (stepper->step_state == LOW) {
+            ++stepper->current_steps;
+        }
+    }
+    else {
+        gpio_set_level(stepper->enbl_gpio, HIGH);
+    }
+#else
     if (stepper->step_state == LOW) {
         --stepper->steps_remaining;
         if (stepper->steps_remaining == 0) {
@@ -107,8 +141,8 @@ bool on_alarm_event(gptimer_handle_t timer, const gptimer_alarm_event_data_t *ed
             xEventGroupSetBitsFromISR(stepper_event_group, stepper->event_group_bit, NULL);
         }
     }
-
-    return true;
+#endif
+    return false;
 }
 
 void stepper_init(struct xyp_stepper* stepper) {
@@ -141,10 +175,15 @@ void stepper_init(struct xyp_stepper* stepper) {
     ESP_ERROR_CHECK(gptimer_set_alarm_action(stepper->timer, &alarm_config));
 
     gptimer_event_callbacks_t alarm_cb = {
-        .on_alarm = on_alarm_event,
+        .on_alarm = move_timer_callback,
     };
     ESP_ERROR_CHECK(gptimer_register_event_callbacks(stepper->timer, &alarm_cb, NULL));
     ESP_ERROR_CHECK(gptimer_enable(stepper->timer));
+
+#ifdef XYP_JOYSTICK_TEST
+    adc2_config_channel_atten(stepper->joystick_channel, ADC_ATTEN_DB_11);
+    stepper->current_steps = 0;
+#endif
 }
 
 void stepper_set_board_pos(struct xyp_stepper* stepper, const float pos) {
@@ -191,6 +230,11 @@ void xyp_init() {
     y_stepper.event_group_bit = Y_BIT;
     y_stepper.enbl_gpio = Y_ENBL_GPIO;
 
+#ifdef XYP_JOYSTICK_TEST
+    x_stepper.joystick_channel = ADC2_CHANNEL_8;
+    y_stepper.joystick_channel = ADC2_CHANNEL_9;
+#endif
+
     stepper_init(&x_stepper);
     stepper_init(&y_stepper);
 
@@ -235,7 +279,7 @@ bool calibration_timer_callback(gptimer_handle_t timer, const gptimer_alarm_even
         }
     }
 
-    return true;
+    return false;
 }
 
 void ensure_no_limit_switch(gptimer_handle_t timer) {
@@ -322,3 +366,15 @@ void xyp_calibrate(){
 void xyp_return_home(){
     xyp_set_board_pos(4.5, 4.5);
 }
+
+#ifdef XYP_JOYSTICK_TEST
+void xyp_joystick_control() {
+    gptimer_start(x_stepper.timer);
+    gptimer_start(y_stepper.timer);
+
+    for (;; ) {
+        printf("X: %ld, Y: %ld\n", x_stepper.current_steps, y_stepper.current_steps);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+#endif

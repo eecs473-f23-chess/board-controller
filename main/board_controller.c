@@ -1,3 +1,4 @@
+
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -17,14 +18,16 @@
 #include "electromagnet.h"
 #include "board_state.h"
 
-bool our_turn; // Track whose move it is, should be switched every turn
-Board chess_board[8][8];
-
 void app_main(void)
 {
     nvs_flash_init();
+
+#ifdef XYP_JOYSTICK_TEST
     xyp_init();
     electromag_init();
+    // xyp_calibrate();
+    xyp_joystick_control();
+#else
 
     //xyp_calibrate();
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -36,4 +39,5 @@ void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(2000));
     electromagnet_off();
     xyp_set_board_pos(5,5);
+#endif
 }
