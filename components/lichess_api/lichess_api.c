@@ -12,6 +12,7 @@
 #include "../score_display/include/score_display.h"
 #include "wifi.h"
 #include "Buttons.h"
+#include "Hall_Effect.h"
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
 #define AUTHORIZATION_HEADER    "Authorization"
@@ -1005,15 +1006,28 @@ void lichess_api_handle_draw_helper(){
 }
 
 void lichess_api_make_move_helper(){
+    char board[8][8] = {{'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'},
+                        {'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'},
+                        {'-', '-', '-', '-', '-', '-', '-', '-'},
+                        {'-', '-', '-', '-', '-', '-', '-', '-'},
+                        {'-', '-', '-', '-', '-', '-', '-', '-'},
+                        {'-', '-', '-', '-', '-', '-', '-', '-'},
+                        {'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'},
+                        {'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'}};
     for(;;){
         xSemaphoreTake(xSemaphore_MakeMove, portMAX_DELAY);
-        if(strcmp(getColor(), "white") == 0){
-            char test_move[5] = "a2a3";
-            lichess_api_make_move(test_move);
-        }
-        else{
-            char test_move[5] = "a7a6";
-            lichess_api_make_move(test_move);
-        }
+        char * move;
+        poll_board(board);
+        compare(board, move);
+        //update_board
+        lichess_api_make_move(move);
+        // if(strcmp(getColor(), "white") == 0){
+        //     char test_move[5] = "a2a3";
+        //     lichess_api_make_move(test_move);
+        // }
+        // else{
+        //     char test_move[5] = "a7a6";
+        //     lichess_api_make_move(test_move);
+        // }
     }
 }
