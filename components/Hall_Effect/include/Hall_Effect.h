@@ -8,6 +8,7 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_continuous.h"
 #include "string.h"
+#include "board_state.h"
 
 #define POSITIVE 1200
 #define NEGATIVE 800

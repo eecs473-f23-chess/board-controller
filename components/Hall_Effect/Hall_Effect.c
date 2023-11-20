@@ -166,46 +166,49 @@ void select_xy_sensor(int x, int y){ //Selects a specific hall effect sensor to 
     set_Board_Mux(x);
 }
 
-void poll_board(char board[8][8]){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
+void poll_board(Board board[8][8], char * move_made){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
                    // coordinates have changed, and from what
+    char cur_board[8][8];
     int index = 0;
     int reading;
     for(int i = 0; i < 8; ++i){
         for(int j = 0; j < 8; ++j){
             select_xy_sensor(i, j);
             reading = Get_Magnetic(hall_effect);
-            if(reading > POSITIVE){
-                if(board[i][j] != 'B'){
+            if(reading > POSITIVE){ // If Black
+                if(board[i][j] == WK || board[i][j] == WQ || board[i][j] == WN || board[i][j] == WB || board[i][j] == WR || board[i][j] == WP || board[i][j] == NP){
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = 'B';
+                cur_board[i][j] = 'B';
             }
-            else if(reading < NEGATIVE){
-                if(board[i][j] != 'W'){
+            else if(reading < NEGATIVE){ //If white
+                if(board[i][j] == BK || board[i][j] == BQ || board[i][j] == BN || board[i][j] == BB || board[i][j] == BRK || board[i][j] == BP || board[i][j] == NP){
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = 'W';
+                cur_board[i][j] = 'W';
             }
             else{
-                if(board[i][j] != '-'){
+                if(board[i][j] != NP){
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = '-';
+                cur_board[i][j] = '-';
             }
         }
     }
+    compare(cur_board, move_made);
+    update_board_based_off_opponent_move(move_made);
 }
 
 void map_array_coordinate_to_chess_square(int x, int y, char* move){
