@@ -1006,21 +1006,22 @@ void lichess_api_handle_draw_helper(){
 }
 
 void lichess_api_make_move_helper(){
-    char board[8][8] = {{'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'},
-                        {'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'},
+    char board[8][8] = {{'B', '-', '-', '-', '-', '-', '-', '-'},
+                        {'B', '-', '-', '-', '-', '-', '-', '-'},
                         {'-', '-', '-', '-', '-', '-', '-', '-'},
                         {'-', '-', '-', '-', '-', '-', '-', '-'},
                         {'-', '-', '-', '-', '-', '-', '-', '-'},
                         {'-', '-', '-', '-', '-', '-', '-', '-'},
-                        {'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'},
-                        {'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'}};
+                        {'W', '-', '-', '-', '-', '-', '-', '-'},
+                        {'W', '-', '-', '-', '-', '-', '-', '-'}};
     for(;;){
         xSemaphoreTake(xSemaphore_MakeMove, portMAX_DELAY);
         char * move;
         poll_board(board);
         compare(board, move);
+        printf("%s\n", move);
         //update_board
-        lichess_api_make_move(move);
+        //lichess_api_make_move(move);
         // if(strcmp(getColor(), "white") == 0){
         //     char test_move[5] = "a2a3";
         //     lichess_api_make_move(test_move);
