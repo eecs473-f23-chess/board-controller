@@ -1,11 +1,10 @@
 #include <stdint.h>
-#include <types.h>
 #include "board_state.h"
 #include "lichess_api.h"
 
 struct target_square {
-    uint8_t target_x_cord;
-    uint8_t target_y_cord;
+    float target_x_cord;
+    float target_y_cord;
     piece_color_t target_emag_status;
 };
 
@@ -29,3 +28,4 @@ void xyp_return_home();
 void xyp_joystick_control();
 #endif
 struct move_sequence generate_moves(Board current_state[8][8]);
+void generate_moves(struct move_sequence * sequence, Board current_state[8][8]);

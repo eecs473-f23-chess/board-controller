@@ -128,7 +128,7 @@ void board_state_set_chess_piece_on_square(int row, int col, Board piece){
      Update chess board based on opponent move.
      Don't need to worry about illegal moves, since lichess takes care of that for us
 */
-void board_state_update_board_based_on_opponent_move(char* move){
+void board_state_update_board_based_on_opponent_move(char* move, move_type_t * move_type){
     printf("Move is %s\n", move);
     int n = strlen(move);
     if(n != 4){
@@ -179,6 +179,7 @@ void board_state_update_board_based_on_opponent_move(char* move){
                 board_state_set_chess_piece_on_square(dest_x, dest_y + 1, NP);
                 board_state_set_chess_piece_on_square(dest_x, dest_y, WK);
                 board_state_set_chess_piece_on_square(dest_x, dest_y - 1, WR);
+                *move_type = CASTLE;
                 return;
             }
         }
@@ -196,6 +197,7 @@ void board_state_update_board_based_on_opponent_move(char* move){
                 board_state_set_chess_piece_on_square(7,0,NP);
                 board_state_set_chess_piece_on_square(dest_x, dest_y, WK);
                 board_state_set_chess_piece_on_square(dest_x, dest_y + 1, WR);
+                *move_type = CASTLE;
                 return;
             }
         }
@@ -213,6 +215,7 @@ void board_state_update_board_based_on_opponent_move(char* move){
                 board_state_set_chess_piece_on_square(0,7,NP);
                 board_state_set_chess_piece_on_square(dest_x, dest_y, BK);
                 board_state_set_chess_piece_on_square(dest_x, dest_y - 1, BRK);
+                *move_type = CASTLE;
                 return;
             }
         }
@@ -230,6 +233,7 @@ void board_state_update_board_based_on_opponent_move(char* move){
                 board_state_set_chess_piece_on_square(0,0 ,NP);
                 board_state_set_chess_piece_on_square(dest_x, dest_y, BK);
                 board_state_set_chess_piece_on_square(dest_x, dest_y + 1, BRK);
+                *move_type = CASTLE;
                 return;
             }
         }
@@ -263,6 +267,7 @@ void board_state_update_board_based_on_opponent_move(char* move){
                     board_state_set_chess_piece_on_square(src_x, src_y, NP);
                     board_state_set_chess_piece_on_square(dest_x, dest_y, WP);
                     board_state_set_chess_piece_on_square(src_x, dest_y, NP);
+                    *move_type = EN_PASSANT;
                     return;
                 }
             }
@@ -283,6 +288,7 @@ void board_state_update_board_based_on_opponent_move(char* move){
                     board_state_set_chess_piece_on_square(src_x, src_y, NP);
                     board_state_set_chess_piece_on_square(dest_x, dest_y, BP);
                     board_state_set_chess_piece_on_square(src_x, dest_y, NP);
+                    *move_type = EN_PASSANT;
                     return;
                 }
             }
@@ -293,7 +299,6 @@ void board_state_update_board_based_on_opponent_move(char* move){
     Board piece_to_move = board_state_get_piece_on_square(src_x, src_y);
     board_state_set_chess_piece_on_square(src_x, src_y, NP);
     board_state_set_chess_piece_on_square(dest_x, dest_y, piece_to_move);
+    *move_type = NORMAL;
     return;
 }
-
-

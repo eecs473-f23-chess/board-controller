@@ -391,21 +391,28 @@ piece_color_t get_piece_color(int piece) {
     }
 }
 
-float get_half_y_step(float cur_y_cord) {
-    if(cur_y_cord < 4.5) {
-        return cur_y_cord + 0.5;
+float get_half_y_step(float prev_y_cord) {
+    if(prev_y_cord < 4.5) {
+        return prev_y_cord + 0.5;
     } else {
-        return cur_y_cord - 0.5;
+        return prev_y_cord - 0.5;
     }
 }
 
-struct move_sequence generate_moves(Board current_state[8][8]) {
-    struct move_sequence sequence;
-    sequence.num_moves = 0;
+void add_target_square(struct move_sequence * sequence, float target_x, float target_y, piece_color_t color) {
+    sequence->squares_to_move[sequence->num_moves].target_x_cord = target_x;
+    sequence->squares_to_move[sequence->num_moves].target_y_cord = target_y;
+    sequence->squares_to_move[sequence->num_moves].target_emag_status = color;
+
+    sequence->num_moves++;
+}
+
+void generate_moves(struct move_sequence * sequence, Board current_state[8][8]) {
+    sequence->num_moves = 0;
 
     char * move_to_make = get_last_move_played_by_opponent();
-    float cur_x_cord = (float)(move_to_make[0] - '0');
-    float cur_y_cord = (float)(move_to_make[1]);
+    float prev_x_cord = (float)(move_to_make[0] - '0');
+    float prev_y_cord = (float)(move_to_make[1]);
     float goal_x_cord = (float)(move_to_make[2] - '0');
     float goal_y_cord = (float)(move_to_make[3]);
 
@@ -415,31 +422,47 @@ struct move_sequence generate_moves(Board current_state[8][8]) {
         piece_color_t capture_piece_color = get_piece_color(goal_square_status);
 
         // move to captured piece
-        sequence.squares_to_move[0].target_x_cord = goal_x_cord;
-        sequence.squares_to_move[0].target_y_cord = goal_y_cord;
-        sequence.squares_to_move[0].target_emag_status = NONE;
+        add_target_square(sequence, goal_x_cord, goal_y_cord, NONE);
 
         // grab captured piece and move to between squares
-        sequence.squares_to_move[1].target_x_cord = goal_x_cord;
-        sequence.squares_to_move[1].target_y_cord = get_half_y_step(goal_y_cord);
-        sequence.squares_to_move[1].target_emag_status = capture_piece_color;
+        add_target_square(sequence, goal_x_cord, get_half_y_step(goal_y_cord), capture_piece_color);
         
         // move captured piece to side of board
         if(goal_x_cord < 4.5) {
-            sequence.squares_to_move[2].target_x_cord = 0.5;
+            add_target_square(sequence, 0.5, get_half_y_step(goal_y_cord), capture_piece_color);
         } else {
-            sequence.squares_to_move[2].target_x_cord = 8.5;
+            add_target_square(sequence, 8.5, get_half_y_step(goal_y_cord), capture_piece_color);
         }
-        sequence.squares_to_move[2].target_y_cord = get_half_y_step(goal_y_cord);
-        sequence.squares_to_move[2].target_emag_status = capture_piece_color;
-
-        sequence.num_moves = 3;
     }
 
-    uint8_t cur_move = sequence.num_moves;
-    sequence.squares_to_move[cur_move].target_x_cord = cur_x_cord;
-    sequence.squares_to_move[cur_move].target_y_cord = cur_y_cord;
-    sequence.squares_to_move[cur_move].target_emag_status = NONE;
+    // move to piece that was played
+    add_target_square(sequence, prev_x_cord, prev_y_cord, NONE);
 
-    return sequence;
+    int played_piece = board_state_get_piece_on_square(prev_x_cord, prev_y_cord);
+    piece_color_t played_piece_color = get_piece_color(goal_square_status);
+
+    // knights can jump...
+    if(played_piece == WN || played_piece == BN) {
+        float half_step;
+        if(fabs(goal_x_cord - prev_x_cord) == 1) {
+            if(prev_x_cord > goal_x_cord) {
+                half_step = prev_x_cord - 0.5;
+            } else {
+                half_step = prev_x_cord + 0.5;
+            }
+            add_target_square(sequence, half_step, prev_y_cord, played_piece_color);
+            add_target_square(sequence, half_step, goal_y_cord, played_piece_color);
+        } else {
+            if(prev_y_cord > goal_y_cord) {
+                half_step = prev_y_cord - 0.5;
+            } else {
+                half_step = prev_y_cord + 0.5;
+            }
+            add_target_square(sequence, prev_x_cord, half_step, played_piece_color);
+            add_target_square(sequence, goal_y_cord, half_step, played_piece_color);
+        }
+    } 
+
+    // move to final position
+    add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
 }
