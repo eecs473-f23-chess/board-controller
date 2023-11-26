@@ -381,3 +381,65 @@ void xyp_joystick_control() {
     }
 }
 #endif
+piece_color_t get_piece_color(int piece) {
+    if(piece == 0) {
+        return NONE;
+    } else if(piece < 7) {
+        return WHITE;
+    } else {
+        return BLACK;
+    }
+}
+
+float get_half_y_step(float cur_y_cord) {
+    if(cur_y_cord < 4.5) {
+        return cur_y_cord + 0.5;
+    } else {
+        return cur_y_cord - 0.5;
+    }
+}
+
+struct move_sequence generate_moves(Board current_state[8][8]) {
+    struct move_sequence sequence;
+    sequence.num_moves = 0;
+
+    char * move_to_make = get_last_move_played_by_opponent();
+    float cur_x_cord = (float)(move_to_make[0] - '0');
+    float cur_y_cord = (float)(move_to_make[1]);
+    float goal_x_cord = (float)(move_to_make[2] - '0');
+    float goal_y_cord = (float)(move_to_make[3]);
+
+    int goal_square_status = board_state_get_piece_on_square(goal_x_cord, goal_y_cord);
+    // if there is soemthing on target square, campture has taken place
+    if(goal_square_status != NP) {  
+        piece_color_t capture_piece_color = get_piece_color(goal_square_status);
+
+        // move to captured piece
+        sequence.squares_to_move[0].target_x_cord = goal_x_cord;
+        sequence.squares_to_move[0].target_y_cord = goal_y_cord;
+        sequence.squares_to_move[0].target_emag_status = NONE;
+
+        // grab captured piece and move to between squares
+        sequence.squares_to_move[1].target_x_cord = goal_x_cord;
+        sequence.squares_to_move[1].target_y_cord = get_half_y_step(goal_y_cord);
+        sequence.squares_to_move[1].target_emag_status = capture_piece_color;
+        
+        // move captured piece to side of board
+        if(goal_x_cord < 4.5) {
+            sequence.squares_to_move[2].target_x_cord = 0.5;
+        } else {
+            sequence.squares_to_move[2].target_x_cord = 8.5;
+        }
+        sequence.squares_to_move[2].target_y_cord = get_half_y_step(goal_y_cord);
+        sequence.squares_to_move[2].target_emag_status = capture_piece_color;
+
+        sequence.num_moves = 3;
+    }
+
+    uint8_t cur_move = sequence.num_moves;
+    sequence.squares_to_move[cur_move].target_x_cord = cur_x_cord;
+    sequence.squares_to_move[cur_move].target_y_cord = cur_y_cord;
+    sequence.squares_to_move[cur_move].target_emag_status = NONE;
+
+    return sequence;
+}

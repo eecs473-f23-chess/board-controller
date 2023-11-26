@@ -58,6 +58,8 @@ void electromagnet_on(piece_color_t color) {
     else if (color == BLACK) {
         gpio_set_level((gpio_num_t)ELECMAG_SELA_GPIO, LOW);
         gpio_set_level((gpio_num_t)ELECMAG_SELB_GPIO, HIGH);
+    } else {
+        electromagnet_off();
     }
 }
 

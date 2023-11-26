@@ -28,6 +28,9 @@ SemaphoreHandle_t xSemaphore_Resign;
 SemaphoreHandle_t xSemaphore_Draw;
 SemaphoreHandle_t xSemaphore_MakeMove;
 
+bool our_turn; // Track whose move it is, should be switched every turn
+// Board chess_board[8][8]; throwing error cause same name somewhere
+
 void app_main(void)
 {
     // TODO: Manual game testing integration
