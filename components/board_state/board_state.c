@@ -16,13 +16,12 @@
 */
 
 // TODO, For some reason ESP didn't like BR as an ENUM so I name it BRK (black rook)
-Board chess_board [8][8];
 #define CHESS_ROWS 8
 #define CHESS_COLS 8
 
 
 // Helper function to print current state of board
-void board_state_print(){
+void board_state_print(Board chess_board[8][8]){
     for(int i = 0; i < CHESS_ROWS; i++){
         for(int j = 0; j < CHESS_COLS; j++){
             printf("%2d ", chess_board[i][j]);
@@ -32,7 +31,7 @@ void board_state_print(){
 }
 
 // Sets up the chess board with initial state (White pieces on bottom)
-void board_state_init(){
+void board_state_init(Board chess_board[8][8]){
     // Setting up the black pieces
 
     for(int i = 0; i < 2; i++){
@@ -110,7 +109,7 @@ void board_state_array_coord_to_chess_not(int x, int y, char* move){
 /*
     Returns chess piece on a specific row and column
 */
-int board_state_get_piece_on_square(int row, int col){
+int board_state_get_piece_on_square(Board chess_board[8][8], int row, int col){
     return chess_board[row][col];
 }
 
@@ -121,14 +120,14 @@ bool board_state_diag_dist_one(int x, int y, int x1, int y1){
 /*
     Sets a chess piece on a square
 */
-void board_state_set_chess_piece_on_square(int row, int col, Board piece){
+void board_state_set_chess_piece_on_square(Board chess_board[8][8], int row, int col, Board piece){
     chess_board[row][col] = piece;
 }
 /*
      Update chess board based on opponent move.
      Don't need to worry about illegal moves, since lichess takes care of that for us
 */
-void board_state_update_board_based_on_opponent_move(char* move, move_type_t * move_type){
+void board_state_update_board_based_on_opponent_move(Board chess_board[8][8], char* move, move_type_t * move_type){
     printf("Move is %s\n", move);
     int n = strlen(move);
     if(n != 4){
@@ -168,17 +167,17 @@ void board_state_update_board_based_on_opponent_move(char* move, move_type_t * m
 
     if(strcmp(move, white_king) == 0){
         // If the source square contains a white king
-        if(board_state_get_piece_on_square(src_x, src_y) == WK){
+        if(board_state_get_piece_on_square(chess_board, src_x, src_y) == WK){
             // There has to be a white rook on h1 (7,7)
-            if(board_state_get_piece_on_square(dest_x, dest_y + 1) != WR){
+            if(board_state_get_piece_on_square(chess_board, dest_x, dest_y + 1) != WR){
                 printf("ERROR. White kingside castling, not rook on h1!\n");
                 return;
             }
             else{
-                board_state_set_chess_piece_on_square(src_x, src_y, NP);
-                board_state_set_chess_piece_on_square(dest_x, dest_y + 1, NP);
-                board_state_set_chess_piece_on_square(dest_x, dest_y, WK);
-                board_state_set_chess_piece_on_square(dest_x, dest_y - 1, WR);
+                board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y + 1, NP);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, WK);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y - 1, WR);
                 *move_type = CASTLE;
                 return;
             }
@@ -186,17 +185,17 @@ void board_state_update_board_based_on_opponent_move(char* move, move_type_t * m
     }
     
     else if(strcmp(move, white_queen) == 0){
-        if(board_state_get_piece_on_square(src_x, src_y) == WK){
+        if(board_state_get_piece_on_square(chess_board, src_x, src_y) == WK){
             // There has to be a white rook on a1 (7,0)
-            if(board_state_get_piece_on_square(7, 0) != WR){
+            if(board_state_get_piece_on_square(chess_board, 7, 0) != WR){
                 printf("ERROR. White queenside castling, not rook on a1!\n");
                 return;
             }
             else{
-                board_state_set_chess_piece_on_square(src_x, src_y, NP);
-                board_state_set_chess_piece_on_square(7,0,NP);
-                board_state_set_chess_piece_on_square(dest_x, dest_y, WK);
-                board_state_set_chess_piece_on_square(dest_x, dest_y + 1, WR);
+                board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
+                board_state_set_chess_piece_on_square(chess_board, 7,0,NP);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, WK);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y + 1, WR);
                 *move_type = CASTLE;
                 return;
             }
@@ -204,17 +203,17 @@ void board_state_update_board_based_on_opponent_move(char* move, move_type_t * m
     }
     
     else if(strcmp(move, black_king) == 0){
-        if(board_state_get_piece_on_square(src_x, src_y) == BK){
+        if(board_state_get_piece_on_square(chess_board, src_x, src_y) == BK){
             // There has to be a black rook on h8 (0,7)
-            if(board_state_get_piece_on_square(0, 7) != BRK){
+            if(board_state_get_piece_on_square(chess_board, 0, 7) != BRK){
                 printf("ERROR. Black kingside castling, not rook on h8!\n");
                 return;
             }
             else{
-                board_state_set_chess_piece_on_square(src_x, src_y, NP);
-                board_state_set_chess_piece_on_square(0,7,NP);
-                board_state_set_chess_piece_on_square(dest_x, dest_y, BK);
-                board_state_set_chess_piece_on_square(dest_x, dest_y - 1, BRK);
+                board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
+                board_state_set_chess_piece_on_square(chess_board, 0,7,NP);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BK);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y - 1, BRK);
                 *move_type = CASTLE;
                 return;
             }
@@ -222,17 +221,17 @@ void board_state_update_board_based_on_opponent_move(char* move, move_type_t * m
     }
     
     else if(strcmp(move, black_queen) == 0){
-        if(board_state_get_piece_on_square(src_x, src_y) == BK){
+        if(board_state_get_piece_on_square(chess_board, src_x, src_y) == BK){
             // There has to be a black rook on a8 (0,0)
-            if(board_state_get_piece_on_square(0, 0) != BRK){
+            if(board_state_get_piece_on_square(chess_board, 0, 0) != BRK){
                 printf("ERROR. Black queenside castling, not rook on a8!\n");
                 return;
             }
             else{
-                board_state_set_chess_piece_on_square(src_x, src_y, NP);
-                board_state_set_chess_piece_on_square(0,0 ,NP);
-                board_state_set_chess_piece_on_square(dest_x, dest_y, BK);
-                board_state_set_chess_piece_on_square(dest_x, dest_y + 1, BRK);
+                board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
+                board_state_set_chess_piece_on_square(chess_board, 0,0 ,NP);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BK);
+                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y + 1, BRK);
                 *move_type = CASTLE;
                 return;
             }
@@ -252,21 +251,21 @@ void board_state_update_board_based_on_opponent_move(char* move, move_type_t * m
     */
 
    // If there is a white pawn
-   if(board_state_get_piece_on_square(src_x, src_y) == WP){
+   if(board_state_get_piece_on_square(chess_board, src_x, src_y) == WP){
 
         // If there is no piece on the destination square
-        if(board_state_get_piece_on_square(dest_x, dest_y) == NP){
+        if(board_state_get_piece_on_square(chess_board, dest_x, dest_y) == NP){
 
             // The destination has to be 1 diagonal square away
             if(board_state_diag_dist_one(src_x, src_y, dest_x, dest_y)){
-                if(board_state_get_piece_on_square(src_x, dest_y) != BP){
+                if(board_state_get_piece_on_square(chess_board, src_x, dest_y) != BP){
                     printf("Expected black pawn next to white pawn\n");
                     return;
                 }
                 else{
-                    board_state_set_chess_piece_on_square(src_x, src_y, NP);
-                    board_state_set_chess_piece_on_square(dest_x, dest_y, WP);
-                    board_state_set_chess_piece_on_square(src_x, dest_y, NP);
+                    board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
+                    board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, WP);
+                    board_state_set_chess_piece_on_square(chess_board, src_x, dest_y, NP);
                     *move_type = EN_PASSANT;
                     return;
                 }
@@ -274,20 +273,20 @@ void board_state_update_board_based_on_opponent_move(char* move, move_type_t * m
         }
    }
    
-   else if(board_state_get_piece_on_square(src_x, src_y) == BP){
+   else if(board_state_get_piece_on_square(chess_board, src_x, src_y) == BP){
      // If there is no piece on the destination square
-        if(board_state_get_piece_on_square(dest_x, dest_y) == NP){
+        if(board_state_get_piece_on_square(chess_board, dest_x, dest_y) == NP){
 
             // The destination has to be 1 diagonal square away
             if(board_state_diag_dist_one(src_x, src_y, dest_x, dest_y)){
-                if(board_state_get_piece_on_square(src_x, dest_y) != WP){
+                if(board_state_get_piece_on_square(chess_board, src_x, dest_y) != WP){
                     printf("Expected white pawn next to black pawn\n");
                     return;
                 }
                 else{
-                    board_state_set_chess_piece_on_square(src_x, src_y, NP);
-                    board_state_set_chess_piece_on_square(dest_x, dest_y, BP);
-                    board_state_set_chess_piece_on_square(src_x, dest_y, NP);
+                    board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
+                    board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BP);
+                    board_state_set_chess_piece_on_square(chess_board, src_x, dest_y, NP);
                     *move_type = EN_PASSANT;
                     return;
                 }
@@ -296,9 +295,9 @@ void board_state_update_board_based_on_opponent_move(char* move, move_type_t * m
    }
 
     // If we reached here, should be a normal move (capture, or moving a piece)
-    Board piece_to_move = board_state_get_piece_on_square(src_x, src_y);
-    board_state_set_chess_piece_on_square(src_x, src_y, NP);
-    board_state_set_chess_piece_on_square(dest_x, dest_y, piece_to_move);
+    Board piece_to_move = board_state_get_piece_on_square(chess_board, src_x, src_y);
+    board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
+    board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, piece_to_move);
     *move_type = NORMAL;
     return;
 }

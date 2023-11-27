@@ -399,6 +399,16 @@ float get_half_y_step(float prev_y_cord) {
     }
 }
 
+int map_x_to_board_state(int cur_x, int cur_y) {
+    cur_x -= 1;
+    return abs(cur_y - 8);
+}
+
+int map_y_to_board_state(int cur_x, int cur_y) {
+    cur_y -= 1;
+    return cur_x - 1;
+}
+
 void add_target_square(struct move_sequence * sequence, float target_x, float target_y, piece_color_t color) {
     sequence->squares_to_move[sequence->num_moves].target_x_cord = target_x;
     sequence->squares_to_move[sequence->num_moves].target_y_cord = target_y;
@@ -407,16 +417,20 @@ void add_target_square(struct move_sequence * sequence, float target_x, float ta
     sequence->num_moves++;
 }
 
-void generate_moves(struct move_sequence * sequence, Board current_state[8][8]) {
+// TODO: change move_type back to pointer
+void generate_moves(struct move_sequence * sequence, Board current_state[8][8], const move_type_t move_type) {
     sequence->num_moves = 0;
 
     char * move_to_make = get_last_move_played_by_opponent();
-    float prev_x_cord = (float)(move_to_make[0] - '0');
-    float prev_y_cord = (float)(move_to_make[1]);
-    float goal_x_cord = (float)(move_to_make[2] - '0');
-    float goal_y_cord = (float)(move_to_make[3]);
+    float prev_x_cord = (float)(move_to_make[0] - 'a' + 1);
+    float prev_y_cord = (float)(move_to_make[1] - '0');
+    float goal_x_cord = (float)(move_to_make[2] - 'a' + 1);
+    float goal_y_cord = (float)(move_to_make[3] - '0');
 
-    int goal_square_status = board_state_get_piece_on_square(goal_x_cord, goal_y_cord);
+    printf("%f %f | %f %f\n", prev_x_cord, prev_y_cord, goal_x_cord, goal_y_cord);
+    int dest_x = map_x_to_board_state(goal_x_cord, goal_y_cord);
+    int dest_y = map_y_to_board_state(goal_x_cord, goal_y_cord);
+    int goal_square_status = board_state_get_piece_on_square(current_state, dest_x, dest_y);
     // if there is soemthing on target square, campture has taken place
     if(goal_square_status != NP) {  
         piece_color_t capture_piece_color = get_piece_color(goal_square_status);
@@ -438,8 +452,63 @@ void generate_moves(struct move_sequence * sequence, Board current_state[8][8]) 
     // move to piece that was played
     add_target_square(sequence, prev_x_cord, prev_y_cord, NONE);
 
-    int played_piece = board_state_get_piece_on_square(prev_x_cord, prev_y_cord);
-    piece_color_t played_piece_color = get_piece_color(goal_square_status);
+    dest_x = map_x_to_board_state(prev_x_cord, prev_y_cord);
+    dest_y = map_y_to_board_state(prev_x_cord, prev_y_cord);
+    int played_piece = board_state_get_piece_on_square(current_state, dest_x, dest_y);
+    piece_color_t played_piece_color = get_piece_color(played_piece);
+
+    if(move_type == EN_PASSANT) {
+        // move played pawn
+        add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
+
+        // move to captured pawn
+        add_target_square(sequence, prev_x_cord, goal_y_cord, NONE);
+
+        // grab captured pawn and move to between squares
+        piece_color_t captured_pawn_color;
+        if(played_piece_color == WHITE) {
+            captured_pawn_color = BLACK;
+        } else {
+            captured_pawn_color = WHITE;
+        }
+        add_target_square(sequence, prev_x_cord, get_half_y_step(goal_y_cord), captured_pawn_color);
+
+        // move captured pawn off to side of board
+        if(prev_x_cord < 4.5) {
+            add_target_square(sequence, 0.5, get_half_y_step(goal_y_cord), captured_pawn_color);
+        } else {
+            add_target_square(sequence, 8.5, get_half_y_step(goal_y_cord), captured_pawn_color);
+        }
+
+        return;
+    }
+
+    if(move_type == CASTLE) {
+        // move king
+        add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
+
+        // move to rook
+        float rook_x;
+        float rook_goal;
+        if(goal_x_cord < prev_x_cord) {
+            // king moving left, rook is on left of king, will end up right of king
+            rook_x = goal_x_cord - 1;
+            rook_goal = goal_x_cord + 1;
+        } else {
+            rook_x = goal_x_cord + 1;
+            rook_goal = goal_x_cord - 1;
+        }
+        add_target_square(sequence, rook_x, goal_y_cord, NONE);
+
+        // grab rook and move to between squares
+        add_target_square(sequence, rook_x, get_half_y_step(goal_y_cord), played_piece_color);
+
+        // move rook to other side of king
+        add_target_square(sequence, rook_goal, get_half_y_step(goal_y_cord), played_piece_color);
+        add_target_square(sequence, rook_goal, goal_y_cord, played_piece_color);
+
+        return;
+    }
 
     // knights can jump...
     if(played_piece == WN || played_piece == BN) {
@@ -465,4 +534,5 @@ void generate_moves(struct move_sequence * sequence, Board current_state[8][8]) 
 
     // move to final position
     add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
+    return;
 }

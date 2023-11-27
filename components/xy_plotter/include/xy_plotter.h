@@ -29,3 +29,6 @@ void xyp_joystick_control();
 #endif
 struct move_sequence generate_moves(Board current_state[8][8]);
 void generate_moves(struct move_sequence * sequence, Board current_state[8][8]);
+// check electrmagnet status before every move when using generate_moves()
+// TODO:move_type back to pointer
+void generate_moves(struct move_sequence * sequence, Board current_state[8][8], const move_type_t move_type);

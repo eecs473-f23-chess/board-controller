@@ -28,8 +28,8 @@ SemaphoreHandle_t xSemaphore_Resign;
 SemaphoreHandle_t xSemaphore_Draw;
 SemaphoreHandle_t xSemaphore_MakeMove;
 
-bool our_turn; // Track whose move it is, should be switched every turn
-// Board chess_board[8][8]; throwing error cause same name somewhere
+// bool our_turn; // Track whose move it is, should be switched every turn
+Board active_chess_board[8][8];
 
 void app_main(void)
 {
@@ -145,4 +145,30 @@ void app_main(void)
     //     our_turn = false;
     // }
     // 
+    move_type_t move_type;
+
+    board_state_init(active_chess_board);
+    char first_move[5] = "e2e3";
+    char second_move[5] = "f1e2";
+    char third_move[5] = "g1f3";
+
+
+    board_state_update_board_based_on_opponent_move(active_chess_board, first_move, &move_type);
+    board_state_update_board_based_on_opponent_move(active_chess_board, second_move, &move_type);
+    board_state_update_board_based_on_opponent_move(active_chess_board, third_move, &move_type);
+
+    board_state_print(active_chess_board);
+    struct move_sequence moves_to_do;
+    generate_moves(&moves_to_do, active_chess_board, CASTLE);
+
+    for(int i = 0; i < moves_to_do.num_moves; i++) {
+        printf("emag status: %d\n",moves_to_do.squares_to_move[i].target_emag_status);
+        printf("moving to x coordinate %f\n",moves_to_do.squares_to_move[i].target_x_cord);
+        printf("moving to y coordinate %f\n",moves_to_do.squares_to_move[i].target_y_cord);
+    }
+
+    char fourth_move[5] = "e1g1";
+    board_state_update_board_based_on_opponent_move(active_chess_board, fourth_move, &move_type);
+
+    board_state_print(active_chess_board);
 }

@@ -425,8 +425,10 @@ char* check_result_of_game(char *json){
     return "{check_result_of_game} DIDNT RETURN ANYTHING";    
 }
 
+// TODO: REPLACE THIS BACK
 char* get_last_move_played_by_opponent(){
-    return last_move_played_by_opponent;
+    //return last_move_played_by_opponent;
+    return "e1g1";
 }
 
 void set_clock_time(char *json){

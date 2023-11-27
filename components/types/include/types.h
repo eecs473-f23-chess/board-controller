@@ -19,7 +19,7 @@ typedef enum MOVE_TYPE {
 } move_type_t;
 
 typedef enum {
-    NP=0, 
+    NP = 0, 
     WR, 
     WN, 
     WB, 
