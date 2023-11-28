@@ -19,16 +19,15 @@
 #include "board_state.h"
 #include "Buttons.h"
 #include "freertos/semphr.h"
+#include "Hall_Effect.h"
 
-#define configTOTAL_HEAP_SIZE 10240
+// #define configTOTAL_HEAP_SIZE 10240
 
 bool our_turn; // Track whose move it is, should be switched every turn
-int var = 0;
 SemaphoreHandle_t xSemaphore;
 SemaphoreHandle_t xSemaphore_Resign;
 SemaphoreHandle_t xSemaphore_Draw;
 SemaphoreHandle_t xSemaphore_MakeMove;
-bool game_created = false;
 
 void app_main(void)
 {
@@ -41,17 +40,23 @@ void app_main(void)
         wifi_init();
         GraphicLCD_init_LCD();
         scoreboard_init();
+        ADC_setup();
         buttons_init();
-
+    
         wifi_connect();
         lichess_api_init_client();
-        const char token_fake = "fake";
+        const char* token_fake = "fake";
         lichess_api_login(token_fake, 10);
         xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 5, NULL);
         xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 4, NULL);
         xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
         xTaskCreate(&lichess_api_make_move_helper, "Make a move for lichess game", 4096, NULL, 4, NULL);
         xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, NULL);
+        // while(1){
+            
+        // }
+
+    
         // lichess_api_stream_move_of_game();
         
 
