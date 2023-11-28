@@ -28,16 +28,20 @@ void app_main(void)
     // xyp_calibrate();
     xyp_joystick_control();
 #else
+    xyp_init();
+    electromag_init();
 
-    //xyp_calibrate();
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    xyp_calibrate();
+    printf("finished calibration\n");
 
-    xyp_set_board_pos(2,2);
-    electromagnet_on(BLACK);
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    xyp_set_board_pos(2, 7);
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    xyp_set_board_pos(7.0, 1.0);
+    electromagnet_on(WHITE);
+    xyp_set_board_pos(6.5, 1);
+    xyp_set_board_pos(6.5, 3);
+    xyp_set_board_pos(6, 3);
+    vTaskDelay(pdMS_TO_TICKS(10000));
     electromagnet_off();
-    xyp_set_board_pos(5,5);
+    xyp_return_home();
+
 #endif
 }
