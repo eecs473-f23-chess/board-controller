@@ -458,11 +458,11 @@ void generate_moves(struct move_sequence * sequence, Board current_state[8][8], 
     piece_color_t played_piece_color = get_piece_color(played_piece);
 
     if(move_type == EN_PASSANT) {
-        // move played pawn
+                // move played pawn
         add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
 
         // move to captured pawn
-        add_target_square(sequence, prev_x_cord, goal_y_cord, NONE);
+        add_target_square(sequence, goal_x_cord, prev_y_cord, NONE);
 
         // grab captured pawn and move to between squares
         piece_color_t captured_pawn_color;
@@ -471,13 +471,13 @@ void generate_moves(struct move_sequence * sequence, Board current_state[8][8], 
         } else {
             captured_pawn_color = WHITE;
         }
-        add_target_square(sequence, prev_x_cord, get_half_y_step(goal_y_cord), captured_pawn_color);
+        add_target_square(sequence, goal_x_cord, get_half_y_step(prev_y_cord), captured_pawn_color);
 
         // move captured pawn off to side of board
-        if(prev_x_cord < 4.5) {
-            add_target_square(sequence, 0.5, get_half_y_step(goal_y_cord), captured_pawn_color);
+        if(goal_x_cord < 4.5) {
+            add_target_square(sequence, 0.5, get_half_y_step(prev_y_cord), captured_pawn_color);
         } else {
-            add_target_square(sequence, 8.5, get_half_y_step(goal_y_cord), captured_pawn_color);
+            add_target_square(sequence, 8.5, get_half_y_step(prev_y_cord), captured_pawn_color);
         }
 
         return;
@@ -492,7 +492,7 @@ void generate_moves(struct move_sequence * sequence, Board current_state[8][8], 
         float rook_goal;
         if(goal_x_cord < prev_x_cord) {
             // king moving left, rook is on left of king, will end up right of king
-            rook_x = goal_x_cord - 1;
+            rook_x = goal_x_cord - 2;
             rook_goal = goal_x_cord + 1;
         } else {
             rook_x = goal_x_cord + 1;

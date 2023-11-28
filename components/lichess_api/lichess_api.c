@@ -428,7 +428,7 @@ char* check_result_of_game(char *json){
 // TODO: REPLACE THIS BACK
 char* get_last_move_played_by_opponent(){
     //return last_move_played_by_opponent;
-    return "e1g1";
+    return "h6f5";
 }
 
 void set_clock_time(char *json){

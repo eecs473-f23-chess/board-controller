@@ -148,18 +148,22 @@ void app_main(void)
     move_type_t move_type;
 
     board_state_init(active_chess_board);
-    char first_move[5] = "e2e3";
-    char second_move[5] = "f1e2";
-    char third_move[5] = "g1f3";
+    char first_move[5] = "f2f4";
+    char second_move[5] = "g8h6";
+    char third_move[5] = "h2h";
+    char fourth_move[5] = "d5d4";
+    // char fifth_move[5] = "e2e4";
 
 
     board_state_update_board_based_on_opponent_move(active_chess_board, first_move, &move_type);
     board_state_update_board_based_on_opponent_move(active_chess_board, second_move, &move_type);
     board_state_update_board_based_on_opponent_move(active_chess_board, third_move, &move_type);
+    board_state_update_board_based_on_opponent_move(active_chess_board, fourth_move, &move_type);
+    // board_state_update_board_based_on_opponent_move(active_chess_board, fifth_move, &move_type);
 
     board_state_print(active_chess_board);
     struct move_sequence moves_to_do;
-    generate_moves(&moves_to_do, active_chess_board, CASTLE);
+    generate_moves(&moves_to_do, active_chess_board, NORMAL);
 
     for(int i = 0; i < moves_to_do.num_moves; i++) {
         printf("emag status: %d\n",moves_to_do.squares_to_move[i].target_emag_status);
@@ -167,8 +171,8 @@ void app_main(void)
         printf("moving to y coordinate %f\n",moves_to_do.squares_to_move[i].target_y_cord);
     }
 
-    char fourth_move[5] = "e1g1";
-    board_state_update_board_based_on_opponent_move(active_chess_board, fourth_move, &move_type);
+    char sixth_move[5] = "f3d4";
+    board_state_update_board_based_on_opponent_move(active_chess_board, sixth_move, &move_type);
 
     board_state_print(active_chess_board);
 }
