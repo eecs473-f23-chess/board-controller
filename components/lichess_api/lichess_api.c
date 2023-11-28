@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h> 
 #include <cJSON.h>
+#include <ctype.h>
 
 #include "../clock_display/include/clock_display.h"     
 #include "../score_display/include/score_display.h"
@@ -24,7 +25,7 @@
 
 static char GAME_ID[100] = {};
 static char FULL_ID[100] = {};
-static char last_move_played_by_opponent[5] = {};
+static char last_move_played_by_opponent[6] = {};
 static char response_buf[2000] = {};
 static char color[10] = {};
 static char user_name[100] = {};
@@ -229,6 +230,47 @@ void set_color(const char *json_str) {
     cJSON_Delete(root);
 }
 
+void handle_promotion(){
+    // If its our turn
+    if (our_turn){
+
+    }
+    else{
+        // Opponents move
+        if (strlen(last_move_played_by_opponent) != 5){
+            printf("{handle_promotion}. ERROR got %s when expected 5 length move", last_move_played_by_opponent);
+            return;
+        }
+
+        else{
+            char piece_to_promote_to = last_move_played_by_opponent[4];
+            char destination_square[3];
+            destination_square[0] = last_move_played_by_opponent[2];
+            destination_square[1] = last_move_played_by_opponent[3];
+            char promotion_sentence[50];
+            if (piece_to_promote_to == 'q'){
+                sprintf(promotion_sentence, "Place queen on %s", destination_square);
+            }   
+            else if (piece_to_promote_to == 'r'){
+                sprintf(promotion_sentence, "Place rook on %s", destination_square);
+
+            }   
+            else if (piece_to_promote_to == 'n'){
+                sprintf(promotion_sentence, "Place knight on %s", destination_square);
+
+            }   
+            else if (piece_to_promote_to == 'b'){
+                sprintf(promotion_sentence, "Place bishop on %s", destination_square);
+            }   
+            else{
+                printf("{handle_promotion}. Didn't find qrnb, found %c instead\n", piece_to_promote_to);
+                return;
+            }
+            // TODO: DISPLAY THE SENTENCE ON THE SCORE DISPLAY!!
+        }
+    }
+}
+
 void set_last_move_played_by_opponent(char* json){
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
@@ -255,10 +297,22 @@ void set_last_move_played_by_opponent(char* json){
         last_move_played_by_opponent[0] = 'N';
         last_move_played_by_opponent[1] = '/';
         last_move_played_by_opponent[2] = 'A';
+        last_move_played_by_opponent[3] = 0;
     }
     else{
-        for(int i = n-4; i < n; i++){
-            last_move_played_by_opponent[i-n+4] = full_moves[i];
+        char first_char = full_moves[n-4];
+
+        if (isdigit(first_char)){
+            // Promotion Case
+            for(int i = n-5; i < n; i++){
+                last_move_played_by_opponent[i-n+5] = full_moves[i];
+            }
+            handle_promotion();
+        }
+        else{
+            for(int i = n-4; i < n; i++){
+                last_move_played_by_opponent[i-n+4] = full_moves[i];
+            }
         }
     }
     cJSON_Delete(root);
@@ -534,6 +588,7 @@ void lichess_api_make_move(char user_move[]) {
     } else {
         ESP_LOGE(TAG, "Lichess_make_a_move request failed: %s", esp_err_to_name(err));
     }
+    esp_http_client_cleanup(client_make_move);
     // xSemaphoreGive(xSemaphore_DataTransfer);
 }
 
@@ -544,8 +599,8 @@ void lichess_api_stream_event() {
         return;
     }
 
-    static char stream_data[550] = {};
-    static esp_http_client_config_t config_stream = {
+    char stream_data[550] = {};
+    esp_http_client_config_t config_stream = {
         .url = "https://lichess.org/api/stream/event",
         .path = "/get",
         .transport_type = HTTP_TRANSPORT_OVER_TCP,
@@ -588,6 +643,7 @@ void lichess_api_stream_event() {
     game_created = true;
     printf("Game created boolean is true\n");
     // xSemaphoreGive(xSemaphore_API);
+    esp_http_client_cleanup(client_stream);
     lichess_api_stream_move_of_game();
 }
 
@@ -600,7 +656,8 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
             .url = "https://lichess.org/api/board/seek",
             .path = "/get",
             .transport_type = HTTP_TRANSPORT_OVER_TCP,
-            .event_handler = _http_event_handler
+            .event_handler = _http_event_handler,
+            .user_data = response_buf
     };
     esp_http_client_handle_t client_create_game = esp_http_client_init(&config_create_game); 
     if (!logged_in) {
@@ -627,6 +684,7 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
     strcat(FULL_PARAMS, "&variant=standard");    
     FULL_PARAMS[strlen(FULL_PARAMS)] = 0;
 
+    esp_http_client_set_header(client_create_game, AUTHORIZATION_HEADER, bearer_token);
     esp_http_client_set_url(client_create_game, URL);
     esp_http_client_set_method(client_create_game, HTTP_METHOD_POST);
     esp_http_client_set_header(client_create_game, "Content-Type", "application/x-www-form-urlencoded");
@@ -646,6 +704,7 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
     }
     // TODO, Verify that this xSemaphoreGive is placed correctly
     // xSemaphoreGive(xSemaphore_API);
+    esp_http_client_cleanup(client_create_game);
     lichess_api_stream_event();
 }
 

@@ -228,11 +228,13 @@ void decrement_time(void * pvParameters){
   while(1){
     if(our_turn && white_time != -1){
       white_time -= 1000;
-      GraphicLCD_DispClock(white_time, our_turn);
+      // GraphicLCD_DispClock(white_time, our_turn);
+      GraphicLCD_DispClock(white_time, true);
     }
     else if(!our_turn && black_time != -1){
       black_time -= 1000;
-      GraphicLCD_DispClock(black_time, our_turn);
+      // GraphicLCD_DispClock(black_time, our_turn);
+      GraphicLCD_DispClock(black_time, false);
     }
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
   }
