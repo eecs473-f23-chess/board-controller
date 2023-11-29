@@ -48,8 +48,8 @@ void app_main(void)
         lichess_api_init_client();
         const char* token_fake = "fake";
         lichess_api_login(token_fake, 10);
-        set_specific_username("bagel_chips");
-        lichess_api_create_game_specific_opponent(true, 300, 2);
+        // set_specific_username("bagel_chips");
+        lichess_api_create_game(true, 15, 10, RANDOM_PLAYER);
         // xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 5, NULL);
         // xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 4, NULL);
         // xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
@@ -108,14 +108,14 @@ void app_main(void)
     // //Need app input here for create game parameterss
     // //printf("%s\n", getColor());
 
-    xyp_set_board_pos(7.0, 1.0);
-    electromagnet_on(WHITE);
-    xyp_set_board_pos(6.5, 1);
-    xyp_set_board_pos(6.5, 3);
-    xyp_set_board_pos(6, 3);
-    vTaskDelay(pdMS_TO_TICKS(10000));
-    electromagnet_off();
-    xyp_return_home();
+    // xyp_set_board_pos(7.0, 1.0);
+    // electromagnet_on(WHITE);
+    // xyp_set_board_pos(6.5, 1);
+    // xyp_set_board_pos(6.5, 3);
+    // xyp_set_board_pos(6, 3);
+    // vTaskDelay(pdMS_TO_TICKS(10000));
+    // electromagnet_off();
+    // xyp_return_home();
 
 // #endif
     //Whenever we get the functions to do so, call this
