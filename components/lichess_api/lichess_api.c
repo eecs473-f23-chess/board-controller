@@ -49,6 +49,9 @@ static esp_http_client_handle_t client_stream;
 static SemaphoreHandle_t xSemaphore_API;
 SemaphoreHandle_t xSemaphore_DataTransfer;
 
+bool white_turn = true;
+bool black_turn = false;
+
 
 esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
@@ -230,46 +233,6 @@ void set_color(const char *json_str) {
     cJSON_Delete(root);
 }
 
-void handle_promotion(){
-    // If its our turn
-    if (our_turn){
-
-    }
-    else{
-        // Opponents move
-        if (strlen(last_move_played_by_opponent) != 5){
-            printf("{handle_promotion}. ERROR got %s when expected 5 length move", last_move_played_by_opponent);
-            return;
-        }
-
-        else{
-            char piece_to_promote_to = last_move_played_by_opponent[4];
-            char destination_square[3];
-            destination_square[0] = last_move_played_by_opponent[2];
-            destination_square[1] = last_move_played_by_opponent[3];
-            char promotion_sentence[50];
-            if (piece_to_promote_to == 'q'){
-                sprintf(promotion_sentence, "Place queen on %s", destination_square);
-            }   
-            else if (piece_to_promote_to == 'r'){
-                sprintf(promotion_sentence, "Place rook on %s", destination_square);
-
-            }   
-            else if (piece_to_promote_to == 'n'){
-                sprintf(promotion_sentence, "Place knight on %s", destination_square);
-
-            }   
-            else if (piece_to_promote_to == 'b'){
-                sprintf(promotion_sentence, "Place bishop on %s", destination_square);
-            }   
-            else{
-                printf("{handle_promotion}. Didn't find qrnb, found %c instead\n", piece_to_promote_to);
-                return;
-            }
-            // TODO: DISPLAY THE SENTENCE ON THE SCORE DISPLAY!!
-        }
-    }
-}
 
 void set_last_move_played_by_opponent(char* json){
     cJSON *root = cJSON_Parse(json);
@@ -307,9 +270,39 @@ void set_last_move_played_by_opponent(char* json){
             for(int i = n-5; i < n; i++){
                 last_move_played_by_opponent[i-n+5] = full_moves[i];
             }
-            handle_promotion();
+
+            char piece_to_promote_to = last_move_played_by_opponent[4];
+            char destination_square[3] = {};
+            destination_square[0] = last_move_played_by_opponent[2];
+            destination_square[1] = last_move_played_by_opponent[3];
+            char promotion_sentence[50] = {};
+            scoreboard_clearline(3);
+            if (piece_to_promote_to == 'q'){
+                sprintf(promotion_sentence, "Place queen on %s", destination_square);
+            }   
+            else if (piece_to_promote_to == 'r'){
+                sprintf(promotion_sentence, "Place rook on %s", destination_square);
+
+            }   
+            else if (piece_to_promote_to == 'n'){
+                sprintf(promotion_sentence, "Place knight on %s", destination_square);
+
+            }   
+            else if (piece_to_promote_to == 'b'){
+                sprintf(promotion_sentence, "Place bishop on %s", destination_square);
+            }   
+            else{
+                printf("{handle_promotion}. Didn't find qrnb, found %c instead\n", piece_to_promote_to);
+                return;
+            }
+            printf("%s | %d\n", promotion_sentence, strlen(promotion_sentence));
+            promotion_sentence[strlen(promotion_sentence)] = 0;
+            scoreboard_SetLine(3);
+            send_string(promotion_sentence);
+
         }
         else{
+            scoreboard_clearline(3);
             for(int i = n-4; i < n; i++){
                 last_move_played_by_opponent[i-n+4] = full_moves[i];
             }
@@ -322,6 +315,7 @@ char* check_result_of_game(char *json){
     char* game_in_progress = "GAME IN PROGRESS";
     char* white_resigned = "0-1 (Black wins)";
     char* black_resigned = "1-0 (White wins)";
+    char* game_aborted = "GAME ABORTED";
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
         printf("{check_result_of_game} ERROR PARSING JSON\n");
@@ -345,17 +339,26 @@ char* check_result_of_game(char *json){
     }
     else if(strcmp(type->valuestring, "gameState") == 0) {
         status = cJSON_GetObjectItem(root, "status");
+
         cJSON* draw_potentialb = cJSON_GetObjectItem(root, "bdraw");
         if(draw_potentialb != NULL){
             printf("Black has offered a draw!\n");
             draw_has_been_offered = true;
             scoreboard_OfferDraw(false);
         }
+
         cJSON* draw_potentialw = cJSON_GetObjectItem(root, "wdraw");
         if(draw_potentialw != NULL){
             printf("White has offered a draw!\n");
             draw_has_been_offered = true;
             scoreboard_OfferDraw(true);
+        }
+
+        if(strcmp(status->valuestring, "aborted") == 0){
+            printf("Game aborted!\n");
+            // TODO, make this work fine. 
+            cJSON_Delete(root);
+            return game_aborted;
         }
         if(status == NULL){
             printf("{check_result_of_game} Status is null in get result\n");
@@ -386,6 +389,10 @@ char* check_result_of_game(char *json){
             else if (claim != NULL && (claim->valueint) == 0 && strcmp(getColor(), "black") == 0){
                 cJSON_Delete(root);
                 return white_resigned;
+            }
+            else{
+                cJSON_Delete(root);
+                return game_in_progress;
             }
         }
     }
@@ -631,11 +638,9 @@ void lichess_api_stream_event() {
     printf("Opponent country %s\n", opponent_country);
 
     if(strcmp(getColor(), "white") == 0){
-        our_turn = true;
         scoreboard_Chess_Setup(user_name, opponent_username, country, opponent_country, rating, opponent_rating);
     }
     else{
-        our_turn = false;
         scoreboard_Chess_Setup(opponent_username, user_name, opponent_country, country, opponent_rating, rating);
     }
     
@@ -652,6 +657,7 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
     // https://lichess.org/api/board/seek 
     // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     printf("Lichess create game HAS SEMAPHORE API\n");
+    scoreboard_clear();
     esp_http_client_config_t config_create_game = {
             .url = "https://lichess.org/api/board/seek",
             .path = "/get",
@@ -833,9 +839,8 @@ void lichess_api_handle_draw(){
     } else {
             ESP_LOGE(TAG, "Lichess_handle_draw request failed: %s", esp_err_to_name(err));
     }
-    
-    xSemaphoreGive(xSemaphore_DataTransfer);
     esp_http_client_cleanup(client_draw);
+    xSemaphoreGive(xSemaphore_DataTransfer);
 }
 
 void lichess_api_resign_game(){
@@ -898,7 +903,7 @@ void lichess_api_stream_move_of_game() {
     printf("Inside Lichess_api_stream_move_of_game\n");
     static const char* TAG = "LICHESS STREAM MOVE";
 
-    // char test_game[20] = "8h1VitrNUDOb";
+    // char test_game[20] = "ZLYYEggbwI8j";
     // for(int i = 0; i < strlen(test_game); i++){
     //     GAME_ID[i] = test_game[i];
     // }
@@ -942,6 +947,8 @@ void lichess_api_stream_move_of_game() {
     esp_http_client_fetch_headers(client_stream);
     want_moves = true;
     xSemaphoreGive(xSemaphore_DataTransfer);
+    
+    // int moves = 0;
 
     // This while loop exists as long as the game is in progress (Streaming moves)
     while(1){ 
@@ -954,7 +961,6 @@ void lichess_api_stream_move_of_game() {
         int curr_stream_data_len = 0;
         // printf("init buffer\n");
         char buffer[5] = {};
-        
         // Data transfer semaphore is taken so that you can't perform a resign operation when 
         // the move is being read
         xSemaphoreTake(xSemaphore_DataTransfer, portMAX_DELAY);
@@ -988,7 +994,7 @@ void lichess_api_stream_move_of_game() {
         xSemaphoreGive(xSemaphore_DataTransfer);
         // printf("LICHESS STREAM GAVE DATA TRANSFER SEMAPHORE\n");
         
-        if(strlen(stream_data) > 1){
+        if(strlen(stream_data) > 1){            
             char* result = check_result_of_game(stream_data);
             if(strcmp(result, "GAME IN PROGRESS") == 0){
                 printf("Game in progress\n");
@@ -1043,6 +1049,15 @@ void lichess_api_stream_move_of_game() {
                 draw_has_been_offered = false;
                 scoreboard_DrawDeclined();
             }
+            else if(strcmp(result, "GAME ABORTED") == 0){
+                // TODO, scoreboard should display game aborted!
+                want_moves = false;
+                game_created = false;
+                char aborted_signal[20] = "Game Aborted!";
+                scoreboard_SetLine(3);
+                send_string(aborted_signal);
+                break;
+            }
             else{
                 // Just continue the game
             }
@@ -1053,8 +1068,24 @@ void lichess_api_stream_move_of_game() {
             printf("White has %lu time\n", white_time);
             printf("Black has %lu time\n", black_time);             
             GraphicLCD_DispClock(white_time, true);
-            GraphicLCD_DispClock(black_time, false);        
-            our_turn = our_turn ^ 1;           
+            GraphicLCD_DispClock(black_time, false);
+            if (strlen(get_last_move_played_by_opponent()) >= 4){
+                white_turn = white_turn ^ 1;
+                black_turn = black_turn ^ 1;
+            }                    
+            if (white_turn){
+                if (black_turn){
+                    printf("Something is wrong. Both white and black are true\n");
+                }
+                printf("White player to move\n");
+            }  
+            else {
+                if (white_turn){
+                    printf("Something is wrong. Both white and black are true\n");
+                }
+                printf("Black turn to move\n");
+            }       
+
         }
         // printf("End of loop\n");
     }

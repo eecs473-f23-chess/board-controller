@@ -23,7 +23,6 @@
 
 // #define configTOTAL_HEAP_SIZE 10240
 
-bool our_turn; // Track whose move it is, should be switched every turn
 SemaphoreHandle_t xSemaphore;
 SemaphoreHandle_t xSemaphore_Resign;
 SemaphoreHandle_t xSemaphore_Draw;
@@ -32,18 +31,20 @@ SemaphoreHandle_t xSemaphore_MakeMove;
 void app_main(void)
 {
     // TODO: Manual game testing integration
-        xSemaphore = xSemaphoreCreateBinary();        
-        xSemaphore_Draw = xSemaphoreCreateBinary();
-        xSemaphore_Resign = xSemaphoreCreateBinary();
+        xSemaphore =          xSemaphoreCreateBinary();        
+        xSemaphore_Draw =     xSemaphoreCreateBinary();
+        xSemaphore_Resign =   xSemaphoreCreateBinary();
         xSemaphore_MakeMove = xSemaphoreCreateBinary();
         nvs_flash_init();
         wifi_init();
         GraphicLCD_init_LCD();
         scoreboard_init();
+        scoreboard_clear();
         ADC_setup();
         buttons_init();
-    
+        
         wifi_connect();
+        
         lichess_api_init_client();
         const char* token_fake = "fake";
         lichess_api_login(token_fake, 10);
@@ -51,10 +52,8 @@ void app_main(void)
         xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 4, NULL);
         xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
         xTaskCreate(&lichess_api_make_move_helper, "Make a move for lichess game", 4096, NULL, 4, NULL);
-        // xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, NULL);
-        // while(1){
-            
-        // }
+        xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, NULL);
+        
 
     
         // lichess_api_stream_move_of_game();
