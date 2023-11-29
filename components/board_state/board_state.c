@@ -153,37 +153,27 @@ void board_state_update_board_based_on_opponent_move(Board chess_board[8][8], ch
 
         if (source_piece == WP){
             board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
-            if(piece_to_promote == 'q'){
-                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, WQ);
-            }
-            else if (piece_to_promote == 'r'){
-                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, WR);
-            }
-            else if (piece_to_promote == 'n'){                
-                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, WN);
-            }
-            else{
-                // Based off error checking above, has to be bishop
-                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, WB);
-            }
+            board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, WP);
         }
 
         // Based off error checking above, has to be black pawn
         else {
             board_state_set_chess_piece_on_square(chess_board, src_x, src_y, NP);
-            if(piece_to_promote == 'q'){
-                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BQ);
-            }
-            else if (piece_to_promote == 'r'){
-                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BRK);
-            }
-            else if (piece_to_promote == 'n'){                
-                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BN);
-            }
-            else{
+            board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BP);
+            // Here for reference incase we change our minds
+            // if(piece_to_promote == 'q'){
+            //     board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BQ);
+            // }
+            // else if (piece_to_promote == 'r'){
+            //     board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BRK);
+            // }
+            // else if (piece_to_promote == 'n'){                
+            //     board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BN);
+            // }
+            // else{
                 // Based off error checking above, has to be bishop
-                board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BB);
-            }
+            //     board_state_set_chess_piece_on_square(chess_board, dest_x, dest_y, BB);
+            // }
         }
         // TODO: ADD PROMOTION ENUM HERE. 
         return;
