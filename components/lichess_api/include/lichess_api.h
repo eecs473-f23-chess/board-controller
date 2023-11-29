@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "types.h"
 
 
 /*************************************************************/
@@ -14,13 +15,12 @@ void lichess_api_get_email(void);
 void lichess_api_make_move(char* move);
 void lichess_api_stream_move_of_game();
 void lichess_api_stream_event(void);
-void lichess_api_create_game(bool rated, int minutes, int increment);
+void lichess_api_create_game(bool rated, int minutes, int increment, opponent_type_t opponent);
 void lichess_api_get_account_info(void);
 void lichess_api_handle_draw(void);
 void lichess_api_resign_game(void);
 char* lichess_api_get_username(void);
 void lichess_api_set_user_country(char* other_user);
-void lichess_api_create_game_specific_opponent(bool rated, int clock_time, int clock_increment);
 /*************************************************************/
 
 
