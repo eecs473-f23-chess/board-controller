@@ -131,16 +131,71 @@ void board_state_set_chess_piece_on_square(int row, int col, Board piece){
 void board_state_update_board_based_on_opponent_move(char* move){
     printf("Move is %s\n", move);
     int n = strlen(move);
+
+    char src_file = move[0]; char src_rank = move[1];
+    char dest_file = move[2]; char dest_rank = move[3];
+
+    int src_x = CHESS_COLS - (src_rank - '0'); int src_y = (src_file - 'a');
+    int dest_x = CHESS_COLS - (dest_rank - '0');int dest_y = (dest_file - 'a');
+
+    if (n == 5){
+        char piece_to_promote = move[4];
+        
+        Board source_piece = board_state_get_piece_on_square(src_x, src_y);
+
+        if (source_piece != WP && source_piece != BP){
+            printf("ERROR: Piece on source square isn't a white or black pawn. Cannot promote!\n");
+            return;
+        }
+
+        if (!(piece_to_promote == 'q' || piece_to_promote == 'n' || piece_to_promote == 'r' || piece_to_promote == 'b')){
+            printf("ERROR: Pawn can only promote to queen (q), rook (r), knight (n), or bishop (b)\n");
+            return;
+        }
+
+        if (source_piece == WP){
+            board_state_set_chess_piece_on_square(src_x, src_y, NP);
+            if(piece_to_promote == 'q'){
+                board_state_set_chess_piece_on_square(dest_x, dest_y, WQ);
+            }
+            else if (piece_to_promote == 'r'){
+                board_state_set_chess_piece_on_square(dest_x, dest_y, WR);
+            }
+            else if (piece_to_promote == 'n'){                
+                board_state_set_chess_piece_on_square(dest_x, dest_y, WN);
+            }
+            else{
+                // Based off error checking above, has to be bishop
+                board_state_set_chess_piece_on_square(dest_x, dest_y, WB);
+            }
+        }
+
+        // Based off error checking above, has to be black pawn
+        else {
+            board_state_set_chess_piece_on_square(src_x, src_y, NP);
+            if(piece_to_promote == 'q'){
+                board_state_set_chess_piece_on_square(dest_x, dest_y, BQ);
+            }
+            else if (piece_to_promote == 'r'){
+                board_state_set_chess_piece_on_square(dest_x, dest_y, BRK);
+            }
+            else if (piece_to_promote == 'n'){                
+                board_state_set_chess_piece_on_square(dest_x, dest_y, BN);
+            }
+            else{
+                // Based off error checking above, has to be bishop
+                board_state_set_chess_piece_on_square(dest_x, dest_y, BB);
+            }
+        }
+        // TODO: ADD PROMOTION ENUM HERE. 
+        return;
+    }
     if(n != 4){
         printf("Error in receiving move from lichess. Expected 4 character move, and got %d char move. GOT %s\n", n, move);
         return;
     }
 
-   char src_file = move[0]; char src_rank = move[1];
-   char dest_file = move[2]; char dest_rank = move[3];
-
-   int src_x = CHESS_COLS - (src_rank - '0'); int src_y = (src_file - 'a');
-   int dest_x = CHESS_COLS - (dest_rank - '0');int dest_y = (dest_file - 'a');
+   
 
     /*
         Castling: There are only 4 castling options.

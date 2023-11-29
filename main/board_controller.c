@@ -17,12 +17,38 @@
 #include "board_state.h"
 
 bool our_turn; // Track whose move it is, should be switched every turn
-Board chess_board[8][8];
+// Board chess_board[8][8];
 
 void app_main(void)
 {
     nvs_flash_init();
     xyp_init();
+
+    char moves[][10] = {
+        "d2d4",
+        "e7e5",
+        "h2h3",
+        "e5d4",
+        "c2c3",
+        "d4c3",
+        "a2a3",
+        "c3b2",
+        "g2g3",
+        "b2a1"
+    };
+
+    int n = sizeof(moves) / sizeof(moves[0]);
+    board_state_init();
+
+    for (int i = 0; i < n; i++){
+        board_state_update_board_based_on_opponent_move(moves[i]);
+        board_state_print();
+        printf("\n");
+    }
+
+    // board_state_print();
+
+
 
     // nvs_flash_init();
     // wifi_init();
