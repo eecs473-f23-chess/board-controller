@@ -12,13 +12,13 @@ struct coordinate{
     int y;
 };
 
-struct coordinate changes[4]; //Will store the changes in the board, should only be 4 max
+struct coordinate changes[99]; //Will store the changes in the board, should only be 4 max
                               //4 for castling, 2 for normal move, 3 for en passant
 
 int Get_Magnetic(adc_oneshot_unit_handle_t adc_handler){ // Will read ADC pin
-    int reading;
-    adc_oneshot_get_calibrated_result(hall_effect, cali, ADC_CHANNEL_0, &reading);
-    return reading;
+    int read = 0;
+    adc_oneshot_get_calibrated_result(hall_effect, cali, ADC_CHANNEL_0, &read);
+    return read;
 }
 
 void ADC_setup(){ //Setups up MUX and ADC pins
@@ -169,11 +169,14 @@ void select_xy_sensor(int x, int y){ //Selects a specific hall effect sensor to 
 void poll_board(char board[8][8]){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
                    // coordinates have changed, and from what
     int index = 0;
-    int reading;
+    int reading = 0;
     for(int i = 0; i < 8; ++i){
         for(int j = 0; j < 8; ++j){
+            printf("%d %d ", i, j);
             select_xy_sensor(i, j);
             reading = Get_Magnetic(hall_effect);
+            vTaskDelay(pdMS_TO_TICKS(5));
+            printf("%d\n", reading);
             if(reading > POSITIVE){
                 if(board[i][j] != 'B'){
                     struct coordinate change;

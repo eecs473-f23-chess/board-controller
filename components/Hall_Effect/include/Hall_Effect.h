@@ -22,7 +22,7 @@ void set_Board_Mux(int i);
 
 void select_xy_sensor(int x, int y);
 
-void poll_board();
+void poll_board(char board [8][8]);
 
 void compare(char board_after [8][8], char* move);
 

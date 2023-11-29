@@ -9,15 +9,16 @@
 #define RS_C1 6 // Register select signal
 #define SC 11 // Serial clock signal J3 19
 #define SI 12 // Serial data signal
-#define CS_C2 9  // Chip select signal
-#define RS_C2 10 // Register select signal
+#define CS_C2 7  // Chip select signal
+#define RS_C2 15 // Register select signal
 #define LOW 0
 #define HIGH 1
 
 // unsigned char NHD[];
 extern uint32_t white_time;
 extern uint32_t black_time;
-extern bool our_turn;
+extern bool white_turn;
+extern bool black_turn;
 
 void GraphicLCD_data_write(unsigned char d, bool left);
 void GraphicLCD_comm_write(unsigned char d, bool left);

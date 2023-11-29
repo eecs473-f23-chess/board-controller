@@ -318,23 +318,19 @@ void scoreboard_OfferDraw(bool LtR){
   }
 }
 
-void scoreboard_DrawStatus(bool accepted){
+void scoreboard_DrawDeclined(){
   scoreboard_command(0x5B+0x80);
   send_string("     ");
-  
-  //CharLCD_clearline(3);
-  scoreboard_command(0x80+0x17);
-  if(accepted){
-    send_string("Draw Accepted");
-  }
-  else{
-    send_string("Draw Denied");
-  }
 }
 
 void scoreboard_WinUpdate(char P1wins[], char P2wins[]){
   scoreboard_clearline(3);
-  scoreboard_command(0x80+0x1C);
+  if(strcmp(P1wins, "1/2") == 0){
+    scoreboard_command(0x80+0x1A);
+  }
+  else{
+    scoreboard_command(0x80+0x1C);
+  }
   send_string(P1wins);
   scoreboard_write('-');
   send_string(P2wins);
