@@ -1129,7 +1129,20 @@ void lichess_api_make_move_helper(void *pvParameters){
         // compare(board, move);
         // printf("%s\n", move);
         //update_board
+        // 
         // lichess_api_make_move(move);
+        
+        int first_row = 0;
+        int last_row = 7;
+        for(int i = 0; i < 8; i++){
+            if(board_state_get_piece_on_square(board, first_row, i) == WP || 
+               board_state_get_piece_on_square(board, last_row, i) == BP){
+                strncat(move, 'q', 1);
+                break;
+            }
+        }
+
+        /*
         if(strcmp(getColor(), "white") == 0){
             char test_move[5] = "a2a3";
             lichess_api_make_move(test_move);
@@ -1138,5 +1151,6 @@ void lichess_api_make_move_helper(void *pvParameters){
             char test_move[5] = "a7a6";
             lichess_api_make_move(test_move);
         }
+        */
     }
 }
