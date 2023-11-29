@@ -1,4 +1,4 @@
-#include "types.h"
+#include "xy_plotter.h"
 
 // Test electromagnet with buttons
 // #define ELECMAG_BUTTON_TEST

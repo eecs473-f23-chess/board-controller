@@ -14,7 +14,6 @@
 #include "mobile_app_ble.h"
 #include "clock_display.h"
 #include "score_display.h"
-#include "xy_plotter.h"
 #include "electromagnet.h"
 #include "board_state.h"
 #include "Buttons.h"
@@ -147,32 +146,44 @@ void app_main(void)
     // 
     move_type_t move_type;
 
-    board_state_init(active_chess_board);
-    char first_move[5] = "f2f4";
-    char second_move[5] = "g8h6";
-    char third_move[5] = "h2h";
-    char fourth_move[5] = "d5d4";
-    // char fifth_move[5] = "e2e4";
+    xyp_set_board_pos(7.0, 1.0);
+    electromagnet_on(BLACK);
+    xyp_set_board_pos(6.5, 1);
+    xyp_set_board_pos(6.5, 3);
+    xyp_set_board_pos(6, 3);
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    electromagnet_off();
+    xyp_return_home();
+
+    // move_type_t move_type;
+
+    // board_state_init(active_chess_board);
+    // char first_move[5] = "f2f4";
+    // char second_move[5] = "g8h6";
+    // char third_move[5] = "h2h4";
+    // char fourth_move[5] = "d5d4";
+    // // char fifth_move[5] = "e2e4";
 
 
-    board_state_update_board_based_on_opponent_move(active_chess_board, first_move, &move_type);
-    board_state_update_board_based_on_opponent_move(active_chess_board, second_move, &move_type);
-    board_state_update_board_based_on_opponent_move(active_chess_board, third_move, &move_type);
-    board_state_update_board_based_on_opponent_move(active_chess_board, fourth_move, &move_type);
-    // board_state_update_board_based_on_opponent_move(active_chess_board, fifth_move, &move_type);
+    // board_state_update_board_based_on_opponent_move(active_chess_board, first_move, &move_type);
+    // board_state_update_board_based_on_opponent_move(active_chess_board, second_move, &move_type);
+    // board_state_update_board_based_on_opponent_move(active_chess_board, third_move, &move_type);
+    // board_state_update_board_based_on_opponent_move(active_chess_board, fourth_move, &move_type);
+    // // board_state_update_board_based_on_opponent_move(active_chess_board, fifth_move, &move_type);
 
-    board_state_print(active_chess_board);
-    struct move_sequence moves_to_do;
-    generate_moves(&moves_to_do, active_chess_board, NORMAL);
+    // board_state_print(active_chess_board);
+    // struct move_sequence moves_to_do;
+    // generate_moves(&moves_to_do, active_chess_board, NORMAL);
 
-    for(int i = 0; i < moves_to_do.num_moves; i++) {
-        printf("emag status: %d\n",moves_to_do.squares_to_move[i].target_emag_status);
-        printf("moving to x coordinate %f\n",moves_to_do.squares_to_move[i].target_x_cord);
-        printf("moving to y coordinate %f\n",moves_to_do.squares_to_move[i].target_y_cord);
-    }
+    // for(int i = 0; i < moves_to_do.num_moves; i++) {
+    //     printf("emag status: %d\n",moves_to_do.squares_to_move[i].target_emag_status);
+    //     printf("moving to x coordinate %f\n",moves_to_do.squares_to_move[i].target_x_cord);
+    //     printf("moving to y coordinate %f\n",moves_to_do.squares_to_move[i].target_y_cord);
 
-    char sixth_move[5] = "f3d4";
-    board_state_update_board_based_on_opponent_move(active_chess_board, sixth_move, &move_type);
+    // }
 
-    board_state_print(active_chess_board);
+    // char sixth_move[5] = "f3d4";
+    // board_state_update_board_based_on_opponent_move(active_chess_board, sixth_move, &move_type);
+
+    // board_state_print(active_chess_board);
 }
