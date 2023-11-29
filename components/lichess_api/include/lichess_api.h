@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
+
 /*************************************************************/
 // These functions deal directly with the lichess api
 void lichess_api_init_client(void);
@@ -13,12 +14,13 @@ void lichess_api_get_email(void);
 void lichess_api_make_move(char* move);
 void lichess_api_stream_move_of_game();
 void lichess_api_stream_event(void);
-void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment, bool white);
+void lichess_api_create_game(bool rated, int minutes, int increment);
 void lichess_api_get_account_info(void);
 void lichess_api_handle_draw(void);
 void lichess_api_resign_game(void);
 char* lichess_api_get_username(void);
 void lichess_api_set_user_country(char* other_user);
+void lichess_api_create_game_specific_opponent(bool rated, int clock_time, int clock_increment);
 /*************************************************************/
 
 
@@ -40,6 +42,7 @@ bool get_opponent_move_update();
 void reset_opponent_move_update();
 char* get_last_move_played_by_opponent();
 char* get_user_country(char* username);
+void set_specific_username(char* specific_username);
 /*************************************************************/
 
 

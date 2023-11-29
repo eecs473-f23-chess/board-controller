@@ -31,6 +31,7 @@ static char color[10] = {};
 static char user_name[100] = {};
 static char rating[5] = {};
 static char country[5] = {};
+static char specific_opponent[35] = {};
 static char bearer_token[64] = {};
 static bool logged_in;
 static bool move_update = false;
@@ -653,10 +654,10 @@ void lichess_api_stream_event() {
 }
 
 
-void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
+void lichess_api_create_game(bool rated, int minutes, int increment) {
     // https://lichess.org/api/board/seek 
     // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
-    printf("Lichess create game HAS SEMAPHORE API\n");
+    printf("Lichess create game RANDOM HAS SEMAPHORE API\n");
     scoreboard_clear();
     esp_http_client_config_t config_create_game = {
             .url = "https://lichess.org/api/board/seek",
@@ -683,7 +684,7 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
 
     int min_size = (int)((ceil(log10(minutes))+1)*sizeof(char));
 
-    char min_as_string[min_size];
+    char min_as_string[min_size+1];
     sprintf(min_as_string, "%d", minutes);
     strcat(fullMin, min_as_string);
     strcat(FULL_PARAMS, fullMin);
@@ -711,6 +712,86 @@ void lichess_api_create_game(bool rated, uint8_t minutes, uint8_t increment) {
     // TODO, Verify that this xSemaphoreGive is placed correctly
     // xSemaphoreGive(xSemaphore_API);
     esp_http_client_cleanup(client_create_game);
+    lichess_api_stream_event();
+}
+
+void set_specific_username(char* spec_user){
+    int n = strlen(spec_user);
+    for(int i = 0; i < n; i++){
+        specific_opponent[i] = spec_user[i];
+    }
+}
+
+void lichess_api_create_game_specific_opponent(bool rated, int clock_time, int clock_increment){
+    char URL[100] = "https://lichess.org/api/challenge/";
+    strcat(URL, specific_opponent);
+    URL[strlen(URL)] = 0;
+
+    char full_params[100] = {};
+
+    scoreboard_clear();
+    esp_http_client_config_t config_create_game_specific = {
+            .url = "https://lichess.org/api/board/seek",
+            .path = "/get",
+            .transport_type = HTTP_TRANSPORT_OVER_TCP,
+            .event_handler = _http_event_handler,
+            .user_data = response_buf
+    };
+
+    esp_http_client_handle_t client_create_game_specific = esp_http_client_init(&config_create_game_specific); 
+    if (!logged_in) {
+        printf("Can't create game. Login not detected\n");
+        return;
+    }
+
+    if (clock_time <= 0){
+        printf("Clock time has to be > 0!");
+        return;
+    }
+
+    rated ? strcat(full_params, "rated=true&") : strcat(full_params, "rated=false&");
+
+    char fullMin[100] = "clock.limit=";
+
+    int min_size = (int)((ceil(log10(clock_time))+1)*sizeof(char));
+    char min_as_string[min_size+1];
+    sprintf(min_as_string, "%d", clock_time);
+    strcat(fullMin, min_as_string);
+    strcat(fullMin, "&clock.increment=");
+    
+
+    int increment_size = (int)((ceil(log10(clock_increment))+1)*sizeof(char));
+    char incr_as_string[increment_size+1];
+    sprintf(incr_as_string, "%d", clock_increment);
+    strcat(fullMin, incr_as_string);
+    strcat(full_params, fullMin);
+
+    strcat(full_params, "&keepAliveStream=true");
+   
+    full_params[strlen(full_params)] = 0;
+
+    printf("URL is %s\n", URL);
+    printf("full params %s\n", full_params);
+
+    esp_http_client_set_header(client_create_game_specific, AUTHORIZATION_HEADER, bearer_token);
+    esp_http_client_set_url(client_create_game_specific, URL);
+    esp_http_client_set_method(client_create_game_specific, HTTP_METHOD_POST);
+    esp_http_client_set_header(client_create_game_specific, "Content-Type", "application/x-www-form-urlencoded");
+    esp_http_client_set_post_field(client_create_game_specific, full_params, strlen(full_params));
+
+    const char* TAG = "LICHESS_CREATE_GAME_SPECIFIC";
+    esp_err_t err = esp_http_client_perform(client_create_game_specific);
+    printf("Response code %d\n", esp_http_client_get_status_code(client_create_game_specific));
+    // ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client_create_game_specific), response_buf);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
+                esp_http_client_get_status_code(client_create_game_specific),
+                esp_http_client_get_content_length(client_create_game_specific));
+    } else {
+        ESP_LOGE(TAG, "Lichess create a game request failed: %s", esp_err_to_name(err));
+    }
+    printf("CHALLENGE SENT TO %s", specific_opponent);
+    esp_http_client_cleanup(client_create_game_specific);
     lichess_api_stream_event();
 }
 
@@ -1132,15 +1213,15 @@ void lichess_api_make_move_helper(void *pvParameters){
         // 
         // lichess_api_make_move(move);
         
-        int first_row = 0;
-        int last_row = 7;
-        for(int i = 0; i < 8; i++){
-            if(board_state_get_piece_on_square(board, first_row, i) == WP || 
-               board_state_get_piece_on_square(board, last_row, i) == BP){
-                strncat(move, 'q', 1);
-                break;
-            }
-        }
+        // int first_row = 0;
+        // int last_row = 7;
+        // for(int i = 0; i < 8; i++){
+        //     if(board_state_get_piece_on_square(board, first_row, i) == WP || 
+        //        board_state_get_piece_on_square(board, last_row, i) == BP){
+        //         strncat(move, 'q', 1);
+        //         break;
+        //     }
+        // }
 
         /*
         if(strcmp(getColor(), "white") == 0){

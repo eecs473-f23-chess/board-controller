@@ -48,11 +48,13 @@ void app_main(void)
         lichess_api_init_client();
         const char* token_fake = "fake";
         lichess_api_login(token_fake, 10);
-        xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 5, NULL);
-        xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 4, NULL);
-        xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
-        xTaskCreate(&lichess_api_make_move_helper, "Make a move for lichess game", 4096, NULL, 4, NULL);
-        xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, NULL);
+        set_specific_username("bagel_chips");
+        lichess_api_create_game_specific_opponent(true, 300, 2);
+        // xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 5, NULL);
+        // xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 4, NULL);
+        // xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
+        // xTaskCreate(&lichess_api_make_move_helper, "Make a move for lichess game", 4096, NULL, 4, NULL);
+        // xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, NULL);
         
 
     
@@ -115,7 +117,7 @@ void app_main(void)
     electromagnet_off();
     xyp_return_home();
 
-#endif
+// #endif
     //Whenever we get the functions to do so, call this
     // scoreboard_Chess_Setup(name1, name2, country1, country2, rating1, rating2)
 
