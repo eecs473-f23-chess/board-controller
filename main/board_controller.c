@@ -146,14 +146,36 @@ void app_main(void)
     // 
     move_type_t move_type;
 
-    xyp_set_board_pos(7.0, 1.0);
-    electromagnet_on(BLACK);
-    xyp_set_board_pos(6.5, 1);
-    xyp_set_board_pos(6.5, 3);
-    xyp_set_board_pos(6, 3);
-    vTaskDelay(pdMS_TO_TICKS(10000));
-    electromagnet_off();
-    xyp_return_home();
+    while(1){
+
+        for(int i = 0; i < 8; i++){
+            printf("Line %d:", i);
+            for(int j = 0; j < 8; j++){
+                select_xy_sensor(i,j);
+                vTaskDelay(pdMS_TO_TICKS(50));
+                reading = Get_Magnetic();
+                printf(" %d ", reading);
+            }
+            printf("\n");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        printf("\n");
+        
+    }
+
+    // xyp_init();
+    // electromag_init();
+
+    // xyp_calibrate();
+
+    // xyp_set_board_pos(7.0, 1.0);
+    // electromagnet_on(BLACK);
+    // xyp_set_board_pos(6.5, 1);
+    // xyp_set_board_pos(6.5, 3);
+    // xyp_set_board_pos(6, 3);
+    // vTaskDelay(pdMS_TO_TICKS(10000));
+    // electromagnet_off();
+    // xyp_return_home();
 
     // move_type_t move_type;
 
