@@ -8,8 +8,8 @@ typedef enum PIECE_COLOR {
 } piece_color_t;
 
 typedef enum OPPONENT_TYPE {
-    RANDOM_PLAYER,
-    SPECIFIC_PLAYER
+    OPPONENT_RANDOM = 0,
+    OPPONENT_SPECIFIC
 } opponent_type_t;
 
 typedef enum MOVE_TYPE {

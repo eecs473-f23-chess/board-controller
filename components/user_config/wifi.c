@@ -10,8 +10,8 @@
 #define WIFI_FAIL_BIT       BIT1
 #define WIFI_START_BIT
 
-static char ssid[MAX_SSID_LEN];
-static char pw[MAX_PASSPHRASE_LEN];
+static char ssid[MAX_SSID_LEN] = "";
+static char pw[MAX_PASSPHRASE_LEN] = "";
 
 static EventGroupHandle_t wifi_event_group;
 
@@ -50,27 +50,9 @@ void wifi_init() {
     is_connected = false;
     ssid_set = false;
     pw_set = false;
-    // char *ssid_replace = "Braeden's Galaxy S22 Ultra";
-    // char *pwd_replace = "sefk6040";
-    
-    char *ssid_replace = "AiPhone";
-    char *pwd_replace = "password";
 
-
-    // char *ssid_replace = "Aditya's iPhone (3)";
-    // char *pwd_replace = "testingone";
-
-    
-    //printf("Wifi: %s | Pass: %s\n", ssid_replace, pwd_replace);
-
-    for(int i = 0; i < strlen(ssid_replace); i++){
-        ssid[i] = ssid_replace[i];
-    }
-    for(int i = 0; i < strlen(pwd_replace); i++){
-        pw[i] = pwd_replace[i];
-    }
-    // ssid[0] = 0;
-    // pw[0] = 0;
+    ssid[0] = 0;
+    pw[0] = 0;
 
     wifi_event_group = xEventGroupCreate();
     esp_netif_init();

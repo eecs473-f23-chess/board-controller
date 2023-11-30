@@ -9,7 +9,7 @@
 #include <cJSON.h>
 #include <ctype.h>
 
-#include "../clock_display/include/clock_display.h"     
+#include "../clock_display/include/clock_display.h"
 #include "../score_display/include/score_display.h"
 #include "wifi.h"
 #include "Buttons.h"
@@ -18,6 +18,7 @@
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
 #define DEFAULT_TIME_CONTROL    TC_15_10
+#define DEFAULT_OPPONENT_TYPE   OPPONENT_RANDOM
 #define AUTHORIZATION_HEADER    "Authorization"
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
@@ -33,9 +34,10 @@ static char color[10] = {};
 static char user_name[100] = {};
 static char rating[5] = {};
 static char country[5] = {};
-static char specific_opponent[35] = {};
+static char specific_opponent[35] = "";
 static char bearer_token[64] = {};
 static time_control_t time_control = DEFAULT_TIME_CONTROL;
+static opponent_type_t opponent_type = DEFAULT_OPPONENT_TYPE;
 static bool logged_in;
 static bool move_update = false;
 static bool want_moves = false;
@@ -571,6 +573,21 @@ void lichess_api_get_time_control(time_control_t* tc) {
     *tc = time_control;
 }
 
+void lichess_api_set_opponent_type(opponent_type_t ot) {
+    opponent_type = ot;
+}
+void lichess_api_get_opponent_type(opponent_type_t* ot) {
+    *ot = opponent_type;
+}
+
+void lichess_api_set_specific_username(char* spec_user, uint16_t len) {
+    strncpy(specific_opponent, spec_user, len);
+}
+
+void lichess_api_get_specific_username(char** username) {
+    *username = specific_opponent;
+}
+
 void lichess_api_make_move(char* user_move) {
     // TODO, remove this comment after
     if (!logged_in) {
@@ -724,7 +741,7 @@ void lichess_api_create_game(bool rated, opponent_type_t opponent) {
         return;
     }
 
-    if (opponent == SPECIFIC_PLAYER){
+    if (opponent == OPPONENT_SPECIFIC){
         int clock_time = minutes * 60;
         int clock_increment = increment;
         if (strlen(specific_opponent) == 0){
@@ -868,14 +885,6 @@ void lichess_api_create_game(bool rated, opponent_type_t opponent) {
     lichess_api_stream_event();
 }
 
-void set_specific_username(char* spec_user){
-    int n = strlen(spec_user);
-    for(int i = 0; i < n; i++){
-        specific_opponent[i] = spec_user[i];
-    }
-}
-
-
 void lichess_api_get_email(void)
 {
     xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
@@ -938,14 +947,11 @@ void lichess_api_init_client(void) {
     ESP_LOGI(TAG, "Complete");
 }
 
-// TODO, REPLACE THIS BACK
 void lichess_api_login(const char* token, const uint16_t token_len) {
     strcpy(bearer_token, "Bearer ");
     // strncat(bearer_token, token, token_len);    
     printf("Inside lichess_api_login\n");
-    const char* replace = "lip_rmolCKvEfYC6Fx81MIdQ";
-    size_t len = strlen(replace) + 1;
-    strncat(bearer_token, replace, len);
+    strncat(bearer_token, token, token_len);
     printf("Bearer token %s\n", bearer_token);
     esp_http_client_set_header(client, "Authorization", bearer_token);
     lichess_api_get_account_info();
@@ -1292,7 +1298,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
 void lichess_api_create_game_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore, portMAX_DELAY);
-        lichess_api_create_game(true, RANDOM_PLAYER);
+        lichess_api_create_game(true, OPPONENT_RANDOM);
     }    
 }
 

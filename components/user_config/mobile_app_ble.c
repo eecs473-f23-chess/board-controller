@@ -17,18 +17,20 @@
 #define MOBILE_APP_BLE_APP_ID   0
 
 // Wifi service
-#define WIFI_SERVICE_UUID       0x01
-#define SSID_CHAR_UUID          0x01
-#define PW_CHAR_UUID            0x02
-#define CONNECTED_UUID          0x03
+#define WIFI_SERVICE_UUID           0x01
+#define SSID_CHAR_UUID              0x01
+#define PW_CHAR_UUID                0x02
+#define CONNECTED_UUID              0x03
 
 // Lichess service
-#define LICHESS_SERVICE_UUID    0x02
-#define BEARER_TOKEN_CHAR_UUID  0x01
+#define LICHESS_SERVICE_UUID        0x02
+#define BEARER_TOKEN_CHAR_UUID      0x01
 
 // Game config service
-#define GAME_SERVICE_UUID       0x03
-#define TIME_CONTROL_CHAR_UUID  0x01
+#define GAME_SERVICE_UUID           0x03
+#define TIME_CONTROL_CHAR_UUID      0x01
+#define OPPONENT_TYPE_CHAR_UUID     0x02
+#define OPPONENT_USERNAME_CHAR_UUID 0x03
 
 // Characteristic handles
 static uint16_t wifi_ssid_char_handle;
@@ -36,6 +38,8 @@ static uint16_t wifi_pw_char_handle;
 static uint16_t wifi_connected_char_handle;
 static uint16_t lichess_bearer_token_char_handle;
 static uint16_t time_control_char_handle;
+static uint16_t opponent_type_char_handle;
+static uint16_t opponent_username_char_handle;
 
 static uint8_t adv_manufacturer_data[] = {0xFF, 0xFF, 0x41, 0x41, 0x42, 0x4D, 0x52};
 
@@ -182,7 +186,7 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
                     break;
                 case GAME_SERVICE_UUID:
                     ESP_LOGI(TAG, "Found game service");
-                    expected_num_chars = 1;
+                    expected_num_chars = 3;
                     break;
                 default:
                     ESP_LOGW(TAG, "Received unhandled service UUID %" PRIu16, service_uuid);
@@ -249,6 +253,14 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
                                 ESP_LOGI(TAG, "Found time control characteristic");
                                 time_control_char_handle = char_handle;
                                 break;
+                            case OPPONENT_TYPE_CHAR_UUID:
+                                ESP_LOGI(TAG, "Found opponent type characteristic");
+                                opponent_type_char_handle = char_handle;
+                                break;
+                            case OPPONENT_USERNAME_CHAR_UUID:
+                                ESP_LOGI(TAG, "Found opponent username characteristic");
+                                opponent_username_char_handle = char_handle;
+                                break;
                             default:
                                 ESP_LOGW(TAG, "Unexpected characteristic UUID %" PRIu16, char_uuid);
                                 break;
@@ -270,6 +282,7 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
 
             // Send wifi ssid
             char* ssid = wifi_get_ssid();
+            printf("wifi len: %d\n", strlen(ssid));
             ret = esp_ble_gattc_write_char(ble_gatt_if, ble_conn_id, wifi_ssid_char_handle, strlen(ssid) + 1, (uint8_t*)ssid, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "Failed writing wifi ssid");
@@ -287,9 +300,38 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
             // Send time control
             time_control_t time_control;
             lichess_api_get_time_control(&time_control);
+            printf("sending time control %"PRIu8"\n", (uint8_t)(time_control));
             ret = esp_ble_gattc_write_char(ble_gatt_if, ble_conn_id, time_control_char_handle, 1, (uint8_t*)(&time_control), ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "Failed writing time control");
+                exit(1);
+            }
+
+            // Send opponent type
+            opponent_type_t opponent_type;
+            lichess_api_get_opponent_type(&opponent_type);
+            printf("sending opponent type %"PRIu8"\n", (uint8_t)(opponent_type));
+            ret = esp_ble_gattc_write_char(ble_gatt_if, ble_conn_id, opponent_type_char_handle, 1, (uint8_t*)(&opponent_type), ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed writing opponent type");
+                exit(1);
+            }
+
+            // Send opponent username
+            char* opponent_username;
+            lichess_api_get_specific_username(&opponent_username);
+            uint16_t username_len;
+            if (!(*opponent_username)) {
+                username_len = 1;
+            }
+            else {
+                username_len = strlen(opponent_username);
+            }
+
+            printf("opponent username len: %d\n", strlen(opponent_username));
+            ret = esp_ble_gattc_write_char(ble_gatt_if, ble_conn_id, opponent_username_char_handle, username_len, (uint8_t*)(opponent_username), ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed writing opponent type");
                 exit(1);
             }
 
@@ -327,6 +369,14 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
             else if (handle == time_control_char_handle) {
                 ESP_LOGI(TAG, "Received time control %"PRIu8, *data);
                 lichess_api_set_time_control((time_control_t)(*data));
+            }
+            else if (handle == opponent_type_char_handle) {
+                ESP_LOGI(TAG, "Received opponent type %"PRIu8, *data);
+                lichess_api_set_opponent_type((opponent_type_t)(*data));
+            }
+            else if (handle == opponent_username_char_handle) {
+                ESP_LOGI(TAG, "Received opponent username %.*s", data_len, data);
+                lichess_api_set_specific_username((char*)(data), data_len);
             }
             else {
                 ESP_LOGW(TAG, "Data from unhandled characteristic handle received");
