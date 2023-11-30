@@ -14,6 +14,7 @@
 #include "wifi.h"
 #include "Buttons.h"
 #include "Hall_Effect.h"
+#include "xy_plotter.h"
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
 #define AUTHORIZATION_HEADER    "Authorization"
@@ -38,6 +39,7 @@ static bool move_update = false;
 static bool want_moves = false;
 static bool draw_has_been_offered = false;
 static bool resigned_game = false;
+static Board user_board_state[8][8];
 uint32_t white_time = -1;
 uint32_t black_time = -1;
 static char opponent_username[100] = {};
@@ -235,7 +237,7 @@ void set_color(const char *json_str) {
 }
 
 
-void set_last_move_played_by_opponent(char* json){
+void set_last_move_played_by_opponent(char* json, bool* is_move_played){
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
         printf("{set_last_move_played_by_opponent} ERROR PARSING JSON\n");
@@ -262,6 +264,10 @@ void set_last_move_played_by_opponent(char* json){
         last_move_played_by_opponent[1] = '/';
         last_move_played_by_opponent[2] = 'A';
         last_move_played_by_opponent[3] = 0;
+        *is_move_played = false;
+    }
+    else if (strcmp(full_moves + n - 4, last_move_played_by_opponent) == 0) {
+        *is_move_played = false;
     }
     else{
         char first_char = full_moves[n-4];
@@ -307,6 +313,7 @@ void set_last_move_played_by_opponent(char* json){
                 last_move_played_by_opponent[i-n+4] = full_moves[i];
             }
         }
+        *is_move_played = true;
     }
     cJSON_Delete(root);
 }
@@ -425,10 +432,8 @@ char* check_result_of_game(char *json){
     return "{check_result_of_game} DIDNT RETURN ANYTHING";    
 }
 
-// TODO: REPLACE THIS BACK
 char* get_last_move_played_by_opponent(){
-    //return last_move_played_by_opponent;
-    return "h6f5";
+    return last_move_played_by_opponent;
 }
 
 void set_clock_time(char *json){
@@ -658,7 +663,9 @@ void lichess_api_stream_event() {
 void lichess_api_create_game(bool rated, int minutes, int increment, opponent_type_t opponent) {
     // https://lichess.org/api/board/seek 
     // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
-    printf("Lichess create game RANDOM HAS SEMAPHORE API\n");
+    board_state_init();
+    lichess_api_set_user_board_state(board_state_get_current_board_state());
+    printf("Lichess create game API\n");
     scoreboard_clear();
     if (opponent == SPECIFIC_PLAYER){
         int clock_time = minutes * 60;
@@ -990,6 +997,14 @@ void lichess_api_resign_game(){
     }
 }
 
+void lichess_api_set_user_board_state(Board** state){
+    for(int i = 0; i < 8; i++){
+        for(int j = 0; j < 8; j++){
+            user_board_state[i][j] = state[i][j];
+        }
+    }
+}
+
 void lichess_api_stream_move_of_game() {
     // https://lichess.org/api/board/game/stream/{gameId}
     printf("Inside Lichess_api_stream_move_of_game\n");
@@ -1153,8 +1168,15 @@ void lichess_api_stream_move_of_game() {
             else{
                 // Just continue the game
             }
-            set_last_move_played_by_opponent(stream_data);
-            scoreboard_DrawDeclined();
+
+            // Update based on last move
+            bool is_move_played;
+            set_last_move_played_by_opponent(stream_data, &is_move_played);
+            if (!is_move_played) {
+                printf("No move played, continuing\n");
+                continue;
+            }
+
             set_clock_time(stream_data);
             printf("Official last move: %s\n", get_last_move_played_by_opponent());
             printf("White has %lu time\n", white_time);
@@ -1178,8 +1200,16 @@ void lichess_api_stream_move_of_game() {
                 printf("Black turn to move\n");
             }       
 
+            move_type_t move_type;
+            board_state_update_board_based_on_opponent_move(get_last_move_played_by_opponent(), &move_type);
+
+            // Get XY plotter moves to make
+            struct move_sequence sequence;
+            xyp_generate_moves(&sequence, user_board_state, move_type, get_last_move_played_by_opponent());
+
+            // Move piece
+            xyp_play_move(&sequence);
         }
-        // printf("End of loop\n");
     }
     esp_http_client_cleanup(client_stream);    
 }
@@ -1187,7 +1217,7 @@ void lichess_api_stream_move_of_game() {
 void lichess_api_create_game_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore, portMAX_DELAY);
-        lichess_api_create_game(true, 15, 5, RANDOM_PLAYER);
+        lichess_api_create_game(true, 15, 5, SPECIFIC_PLAYER);
     }    
 }
 
@@ -1206,43 +1236,12 @@ void lichess_api_handle_draw_helper(void *pvParameters){
 }
 
 void lichess_api_make_move_helper(void *pvParameters){
-    char board[8][8] = {{'B', '-', '-', '-', '-', '-', '-', '-'},
-                        {'B', '-', '-', '-', '-', '-', '-', '-'},
-                        {'-', '-', '-', '-', '-', '-', '-', '-'},
-                        {'-', '-', '-', '-', '-', '-', '-', '-'},
-                        {'-', '-', '-', '-', '-', '-', '-', '-'},
-                        {'-', '-', '-', '-', '-', '-', '-', '-'},
-                        {'W', '-', '-', '-', '-', '-', '-', '-'},
-                        {'W', '-', '-', '-', '-', '-', '-', '-'}};
     for(;;){
         xSemaphoreTake(xSemaphore_MakeMove, portMAX_DELAY);
-        // char * move = "";
-        // poll_board(board);
-        // compare(board, move);
-        // printf("%s\n", move);
-        //update_board
-        // 
-        // lichess_api_make_move(move);
-        
-        // int first_row = 0;
-        // int last_row = 7;
-        // for(int i = 0; i < 8; i++){
-        //     if(board_state_get_piece_on_square(board, first_row, i) == WP || 
-        //        board_state_get_piece_on_square(board, last_row, i) == BP){
-        //         strncat(move, 'q', 1);
-        //         break;
-        //     }
-        // }
-
-        /*
-        if(strcmp(getColor(), "white") == 0){
-            char test_move[5] = "a2a3";
-            lichess_api_make_move(test_move);
-        }
-        else{
-            char test_move[5] = "a7a6";
-            lichess_api_make_move(test_move);
-        }
-        */
+        char * move = "";
+        poll_board(board_state_get_current_board_state(), move);
+        printf("%s\n", move);
+        lichess_api_set_user_board_state(board_state_get_current_board_state());
+        lichess_api_make_move(move);
     }
 }

@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "types.h"
+#include "board_state.h"
 
 
 /*************************************************************/
@@ -21,6 +22,7 @@ void lichess_api_handle_draw(void);
 void lichess_api_resign_game(void);
 char* lichess_api_get_username(void);
 void lichess_api_set_user_country(char* other_user);
+void lichess_api_set_user_board_state(Board** state);
 /*************************************************************/
 
 

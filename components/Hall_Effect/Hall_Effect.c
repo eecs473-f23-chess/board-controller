@@ -166,7 +166,7 @@ void select_xy_sensor(int x, int y){ //Selects a specific hall effect sensor to 
     set_Board_Mux(x);
 }
 
-void poll_board(Board board[8][8], char * move_made){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
+void poll_board(Board** board, char * move_made){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
                    // coordinates have changed, and from what
     char cur_board[8][8];
     int index = 0;
@@ -221,7 +221,7 @@ void poll_board(Board board[8][8], char * move_made){ // Polls the entire board,
     }
     compare(cur_board, move_made, index);
     move_type_t user_move_type;
-    board_state_update_board_based_on_opponent_move(board, move_made, &user_move_type);
+    board_state_update_board_based_on_opponent_move(move_made, &user_move_type);
 }
 
 void map_array_coordinate_to_chess_square(int x, int y, char* move){

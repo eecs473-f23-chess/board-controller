@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "board_state.h"
-#include "lichess_api.h"
 
 struct target_square {
     float target_x_cord;
@@ -29,5 +28,5 @@ void xyp_joystick_control();
 #endif
 
 // check electrmagnet status before every move when using generate_moves()
-// TODO:move_type back to pointer
-void generate_moves(struct move_sequence * sequence, Board current_state[8][8], const move_type_t move_type);
+void xyp_generate_moves(struct move_sequence * sequence, Board current_state[8][8], const move_type_t move_type, char * move_to_make);
+void xyp_play_move(struct move_sequence* sequence);

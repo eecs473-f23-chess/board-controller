@@ -417,11 +417,9 @@ void add_target_square(struct move_sequence * sequence, float target_x, float ta
     sequence->num_moves++;
 }
 
-// TODO: change move_type back to pointer
-void generate_moves(struct move_sequence * sequence, Board current_state[8][8], const move_type_t move_type) {
+void xyp_generate_moves(struct move_sequence * sequence, Board current_state[8][8], const move_type_t move_type, char * move_to_make) {
     sequence->num_moves = 0;
 
-    char * move_to_make = get_last_move_played_by_opponent();
     float prev_x_cord = (float)(move_to_make[0] - 'a' + 1);
     float prev_y_cord = (float)(move_to_make[1] - '0');
     float goal_x_cord = (float)(move_to_make[2] - 'a' + 1);
@@ -534,5 +532,14 @@ void generate_moves(struct move_sequence * sequence, Board current_state[8][8], 
 
     // move to final position
     add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
+    
     return;
+}
+
+void xyp_play_move(struct move_sequence* sequence) {
+    // TODO actually move pieces
+    printf("Moving piece with following sequence:\n");
+    for (uint8_t i = 0; i < sequence->num_moves; ++i) {
+        printf("\tX: %f, Y: %f, EM: %d\n", sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord, sequence->squares_to_move[i].target_emag_status);
+    }
 }
