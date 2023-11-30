@@ -33,7 +33,7 @@ void lichess_api_get_specific_username(char** username);
 void lichess_api_make_move(char* move);
 void lichess_api_stream_move_of_game(void *pvParameters);
 void lichess_api_stream_event(void);
-void lichess_api_create_game(bool rated, opponent_type_t opponent);
+void lichess_api_create_game(bool rated);
 void lichess_api_get_account_info(void);
 void lichess_api_handle_draw(void);
 void lichess_api_resign_game(void);

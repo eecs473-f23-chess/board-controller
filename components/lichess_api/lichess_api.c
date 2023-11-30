@@ -582,6 +582,7 @@ void lichess_api_get_opponent_type(opponent_type_t* ot) {
 
 void lichess_api_set_specific_username(char* spec_user, uint16_t len) {
     strncpy(specific_opponent, spec_user, len);
+    specific_opponent[len] = 0;
 }
 
 void lichess_api_get_specific_username(char** username) {
@@ -697,7 +698,7 @@ void lichess_api_stream_event() {
 }
 
 
-void lichess_api_create_game(bool rated, opponent_type_t opponent) {
+void lichess_api_create_game(bool rated) {
     // https://lichess.org/api/board/seek 
     // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     board_state_init();
@@ -741,17 +742,20 @@ void lichess_api_create_game(bool rated, opponent_type_t opponent) {
         return;
     }
 
-    if (opponent == OPPONENT_SPECIFIC){
+    if (opponent_type == OPPONENT_SPECIFIC){
         int clock_time = minutes * 60;
         int clock_increment = increment;
+        printf("Making game with %s\n", specific_opponent);
         if (strlen(specific_opponent) == 0){
             printf("ERROR: Specific player username not initialized\n");
             return; 
         }
         char URL[100] = "https://lichess.org/api/challenge/";
         strcat(URL, specific_opponent);
+        printf("test 1\n");
         URL[strlen(URL)] = 0;
         char full_params[100] = {};
+        printf("test 2\n");
         esp_http_client_config_t config_create_game_specific = {
                 .url = "https://lichess.org/api/board/seek",
                 .path = "/get",
@@ -760,6 +764,7 @@ void lichess_api_create_game(bool rated, opponent_type_t opponent) {
                 .user_data = response_buf
         };
         esp_http_client_handle_t client_create_game_specific = esp_http_client_init(&config_create_game_specific); 
+        printf("test 3\n");
         if (!logged_in) {
             printf("Can't create game. Login not detected\n");
             return;
@@ -769,18 +774,18 @@ void lichess_api_create_game(bool rated, opponent_type_t opponent) {
             printf("Clock time has to be > 0!");
             return;
         }
-
+        printf("test 4\n");
         rated ? strcat(full_params, "rated=true&") : strcat(full_params, "rated=false&");
         char fullMin[100] = "clock.limit=";
 
-        int min_size = (int)((ceil(log10(clock_time))+1)*sizeof(char));
+        int min_size = 100;
         char min_as_string[min_size+1];
         sprintf(min_as_string, "%d", clock_time);
         strcat(fullMin, min_as_string);
-
+        printf("test 5\n");
 
         strcat(fullMin, "&clock.increment=");   
-        int increment_size = (int)((ceil(log10(clock_increment))+1)*sizeof(char));
+        int increment_size = 100;
         char incr_as_string[increment_size+1];
         sprintf(incr_as_string, "%d", clock_increment);
         strcat(fullMin, incr_as_string);
@@ -842,14 +847,14 @@ void lichess_api_create_game(bool rated, opponent_type_t opponent) {
         char fullMin[100] = "time=";
         char fullInc[100] = "&increment=";
 
-        int min_size = (int)((ceil(log10(minutes))+1)*sizeof(char));
+        int min_size = 100;
 
         char min_as_string[min_size+1];
         sprintf(min_as_string, "%d", minutes);
         strcat(fullMin, min_as_string);
         strcat(FULL_PARAMS, fullMin);
 
-        int increment_size = (int)((ceil(log10(increment))+1)*sizeof(char));
+        int increment_size = 100;
         char incr_as_string[increment_size+1];
         sprintf(incr_as_string, "%d", increment);
         strcat(fullInc, incr_as_string);
@@ -1298,21 +1303,21 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
 void lichess_api_create_game_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore, portMAX_DELAY);
-        lichess_api_create_game(true, OPPONENT_RANDOM);
+        lichess_api_create_game(true);
     }    
 }
 
 void lichess_api_resign_game_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore_Resign, portMAX_DELAY);
-        lichess_api_resign_game();
+        //lichess_api_resign_game();
     }
 }
 
 void lichess_api_handle_draw_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore_Draw, portMAX_DELAY);
-       lichess_api_handle_draw();
+       //lichess_api_handle_draw();
     }
 }
 
