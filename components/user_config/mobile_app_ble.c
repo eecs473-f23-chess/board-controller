@@ -14,7 +14,7 @@
 #include "lichess_api.h"
 #include "wifi.h"
 
-#define MOBILE_APP_BLE_APP_ID       0
+#define MOBILE_APP_BLE_APP_ID   0
 
 // Wifi service
 #define WIFI_SERVICE_UUID       0x01
@@ -26,11 +26,16 @@
 #define LICHESS_SERVICE_UUID    0x02
 #define BEARER_TOKEN_CHAR_UUID  0x01
 
+// Game config service
+#define GAME_SERVICE_UUID       0x03
+#define TIME_CONTROL_CHAR_UUID  0x01
+
 // Characteristic handles
 static uint16_t wifi_ssid_char_handle;
 static uint16_t wifi_pw_char_handle;
 static uint16_t wifi_connected_char_handle;
 static uint16_t lichess_bearer_token_char_handle;
+static uint16_t time_control_char_handle;
 
 static uint8_t adv_manufacturer_data[] = {0xFF, 0xFF, 0x41, 0x41, 0x42, 0x4D, 0x52};
 
@@ -175,6 +180,10 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
                     ESP_LOGI(TAG, "Found lichess service");
                     expected_num_chars = 1;
                     break;
+                case GAME_SERVICE_UUID:
+                    ESP_LOGI(TAG, "Found game service");
+                    expected_num_chars = 1;
+                    break;
                 default:
                     ESP_LOGW(TAG, "Received unhandled service UUID %" PRIu16, service_uuid);
                     return;
@@ -231,7 +240,18 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
                                 break;
                             default:
                                 ESP_LOGW(TAG, "Unexpected characteristic UUID %" PRIu16, char_uuid);
-                            break;
+                                break;
+                        }
+                        break;
+                    case GAME_SERVICE_UUID:
+                        switch (char_uuid) {
+                            case TIME_CONTROL_CHAR_UUID:
+                                ESP_LOGI(TAG, "Found time control characteristic");
+                                time_control_char_handle = char_handle;
+                                break;
+                            default:
+                                ESP_LOGW(TAG, "Unexpected characteristic UUID %" PRIu16, char_uuid);
+                                break;
                         }
                         break;
                     default:
@@ -263,6 +283,16 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
                 ESP_LOGE(TAG, "Failed writing wifi connected status");
                 exit(1);
             }
+
+            // Send time control
+            time_control_t time_control;
+            lichess_api_get_time_control(&time_control);
+            ret = esp_ble_gattc_write_char(ble_gatt_if, ble_conn_id, time_control_char_handle, 1, (uint8_t*)(&time_control), ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed writing time control");
+                exit(1);
+            }
+
             break;
         case ESP_GATTC_NOTIFY_EVT:
             ESP_LOGI(TAG, "ESP_GATTC_NOTIFY_EVT");
@@ -293,6 +323,10 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
             else if (handle == lichess_bearer_token_char_handle) {
                 ESP_LOGI(TAG, "Received lichess bearer token");
                 lichess_api_login((char*)data, data_len);
+            }
+            else if (handle == time_control_char_handle) {
+                ESP_LOGI(TAG, "Received time control %"PRIu8, *data);
+                lichess_api_set_time_control((time_control_t)(*data));
             }
             else {
                 ESP_LOGW(TAG, "Data from unhandled characteristic handle received");

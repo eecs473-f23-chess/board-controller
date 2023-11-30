@@ -17,6 +17,7 @@
 #include "xy_plotter.h"
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
+#define DEFAULT_TIME_CONTROL    TC_15_10
 #define AUTHORIZATION_HEADER    "Authorization"
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
@@ -34,6 +35,7 @@ static char rating[5] = {};
 static char country[5] = {};
 static char specific_opponent[35] = {};
 static char bearer_token[64] = {};
+static time_control_t time_control = DEFAULT_TIME_CONTROL;
 static bool logged_in;
 static bool move_update = false;
 static bool want_moves = false;
@@ -562,7 +564,14 @@ void lichess_api_set_user_country(char* other_user){
     xSemaphoreGive(xSemaphore_API);
 }
 
-void lichess_api_make_move(char user_move[]) {
+void lichess_api_set_time_control(time_control_t tc) {
+    time_control = tc;
+}
+void lichess_api_get_time_control(time_control_t* tc) {
+    *tc = time_control;
+}
+
+void lichess_api_make_move(char* user_move) {
     // TODO, remove this comment after
     if (!logged_in) {
         return;
@@ -667,11 +676,11 @@ void lichess_api_stream_event() {
     printf("Game created boolean is true\n");
     xSemaphoreGive(xSemaphore_API);
     esp_http_client_cleanup(client_stream);
-    lichess_api_stream_move_of_game();
+    lichess_api_stream_move_of_game(NULL);
 }
 
 
-void lichess_api_create_game(bool rated, int minutes, int increment, opponent_type_t opponent) {
+void lichess_api_create_game(bool rated, opponent_type_t opponent) {
     // https://lichess.org/api/board/seek 
     // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     board_state_init();
@@ -681,6 +690,40 @@ void lichess_api_create_game(bool rated, int minutes, int increment, opponent_ty
     lichess_api_set_user_board_state(board_state_get_current_board_state());
     printf("Lichess create game API\n");
     scoreboard_clear();
+
+    int minutes;
+    int increment;
+    switch (time_control) {
+        case TC_10_0:
+            minutes = 10;
+            increment = 0;
+            break;
+        case TC_10_5:
+            minutes = 10;
+            increment = 5;
+            break;
+        case TC_15_10:
+            minutes = 15;
+            increment = 10;
+            break;
+        case TC_30_0:
+            minutes = 30;
+            increment = 0;
+            break;
+        case TC_30_20:
+            minutes = 30;
+            increment = 20;
+            break;
+        default:
+            printf("Undefined time control\n");
+            exit(1);
+    }
+
+    if(minutes <= 0){
+        printf("ERROR, MINUTES MUST BE >= 1");
+        return;
+    }
+
     if (opponent == SPECIFIC_PLAYER){
         int clock_time = minutes * 60;
         int clock_increment = increment;
@@ -1028,7 +1071,7 @@ void lichess_api_set_user_board_state(board_state_t* state){
     }
 }
 
-void lichess_api_stream_move_of_game() {
+void lichess_api_stream_move_of_game(void *pvParameters) {
     // https://lichess.org/api/board/game/stream/{gameId}
     printf("Inside Lichess_api_stream_move_of_game\n");
     static const char* TAG = "LICHESS STREAM MOVE";
@@ -1249,7 +1292,7 @@ void lichess_api_stream_move_of_game() {
 void lichess_api_create_game_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore, portMAX_DELAY);
-        lichess_api_create_game(true, 15, 5, SPECIFIC_PLAYER);
+        lichess_api_create_game(true, RANDOM_PLAYER);
     }    
 }
 
