@@ -46,9 +46,9 @@ void app_main(void)
     ADC_setup();   
     wifi_connect();
     lichess_api_init_client();
-    // xyp_init();
-    // electromag_init();
-    // xyp_calibrate();
+    xyp_init();
+    electromag_init();
+    xyp_calibrate();
     buttons_init();
 
     const char* token_fake = "fake";

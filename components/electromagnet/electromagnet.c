@@ -67,3 +67,20 @@ void electromagnet_off() {
     gpio_set_level((gpio_num_t)ELECMAG_SELA_GPIO, LOW);
     gpio_set_level((gpio_num_t)ELECMAG_SELB_GPIO, LOW);
 }
+
+void electromagnet_set(piece_color_t color) {
+    switch (color) {
+        case WHITE:
+            gpio_set_level((gpio_num_t)ELECMAG_SELA_GPIO, HIGH);
+            gpio_set_level((gpio_num_t)ELECMAG_SELB_GPIO, LOW);
+            break;
+        case BLACK:
+            gpio_set_level((gpio_num_t)ELECMAG_SELA_GPIO, LOW);
+            gpio_set_level((gpio_num_t)ELECMAG_SELB_GPIO, HIGH);
+            break;
+        case NONE:
+            gpio_set_level((gpio_num_t)ELECMAG_SELA_GPIO, LOW);
+            gpio_set_level((gpio_num_t)ELECMAG_SELB_GPIO, LOW);
+            break;
+    }
+}

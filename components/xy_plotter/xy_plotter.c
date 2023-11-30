@@ -12,6 +12,8 @@
 #include <string.h>
 #include <math.h>
 
+#include "electromagnet.h"
+
 // GPIOs
 #define X_DIR_GPIO              0
 #define X_STEP_GPIO             35
@@ -531,7 +533,7 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
                 half_step = prev_y_cord + 0.5;
             }
             add_target_square(sequence, prev_x_cord, half_step, played_piece_color);
-            add_target_square(sequence, goal_y_cord, half_step, played_piece_color);
+            add_target_square(sequence, goal_x_cord, half_step, played_piece_color);
         }
     } 
 
@@ -542,9 +544,13 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
 }
 
 void xyp_play_move(struct move_sequence* sequence) {
-    // TODO actually move pieces
-    printf("Moving piece with following sequence:\n");
+    printf("Moving sequence:\n");
     for (uint8_t i = 0; i < sequence->num_moves; ++i) {
-        printf("\tX: %f, Y: %f, EM: %d\n", sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord, sequence->squares_to_move[i].target_emag_status);
+        printf("Moving to X: %f, Y: %f, EM: %d\n", sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord, sequence->squares_to_move[i].target_emag_status);
+        electromagnet_set(sequence->squares_to_move[i].target_emag_status);
+        xyp_set_board_pos(sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord);
     }
+
+    electromagnet_off();
+    xyp_return_home();
 }

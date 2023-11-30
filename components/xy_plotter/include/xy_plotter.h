@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "board_state.h"
 
+#ifndef XY_PLOTTER_H
+#define XY_PLOTTER_H
+
 struct target_square {
     float target_x_cord;
     float target_y_cord;
@@ -30,3 +33,5 @@ void xyp_joystick_control();
 // check electrmagnet status before every move when using generate_moves()
 void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_state, const move_type_t move_type, char * move_to_make);
 void xyp_play_move(struct move_sequence* sequence);
+
+#endif
