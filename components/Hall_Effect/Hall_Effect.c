@@ -166,49 +166,62 @@ void select_xy_sensor(int x, int y){ //Selects a specific hall effect sensor to 
     set_Board_Mux(x);
 }
 
-void poll_board(char board[8][8]){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
+void poll_board(Board board[8][8], char * move_made){ // Polls the entire board, reading each hall effect sensor and recording the state of the board, as well as which
                    // coordinates have changed, and from what
+    char cur_board[8][8];
     int index = 0;
-    int reading = 0;
+    int reading;
+    printf("--------------------------------------------\n");
     for(int i = 0; i < 8; ++i){
+        if (index == 4) {
+            printf("Found 4 changes, exiting\n");
+            break;
+        }
         for(int j = 0; j < 8; ++j){
             printf("%d %d ", i, j);
             select_xy_sensor(i, j);
-            reading = Get_Magnetic(hall_effect);
-            vTaskDelay(pdMS_TO_TICKS(5));
-            printf("%d\n", reading);
-            if(reading > POSITIVE){
-                if(board[i][j] != 'B'){
+            vTaskDelay(pdMS_TO_TICKS(50));
+            reading = Get_Magnetic();
+            printf("%d     ", reading);
+            if(reading < NEGATIVE){ // If Black
+                if(board[i][j] == WK || board[i][j] == WQ || board[i][j] == WN || board[i][j] == WB || board[i][j] == WR || board[i][j] == WP || board[i][j] == NP){
+                    printf("deteched black piece change\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = 'B';
+                cur_board[i][j] = 'B';
             }
-            else if(reading < NEGATIVE){
-                if(board[i][j] != 'W'){
+            else if(reading > POSITIVE){ //If white
+                if(board[i][j] == BK || board[i][j] == BQ || board[i][j] == BN || board[i][j] == BB || board[i][j] == BRK || board[i][j] == BP || board[i][j] == NP){
+                    printf("detected white piece change\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = 'W';
+                cur_board[i][j] = 'W';
             }
             else{
-                if(board[i][j] != '-'){
+                if(board[i][j] != NP){
+                    printf("change from no piece\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
                     changes[index] = change;
                     ++index;
                 }
-                board[i][j] = '-';
+                cur_board[i][j] = '-';
             }
         }
+        printf("\n");
     }
+    compare(cur_board, move_made, index);
+    move_type_t user_move_type;
+    board_state_update_board_based_on_opponent_move(board, move_made, &user_move_type);
 }
 
 void map_array_coordinate_to_chess_square(int x, int y, char* move){
@@ -222,9 +235,12 @@ void map_array_coordinate_to_chess_square(int x, int y, char* move){
     strcpy(move, coordinate);
 }
 
-void compare(char board_after [8][8], char* move){
-    int k = sizeof(changes)/sizeof(struct coordinate);
-    if(k == 3){
+void compare(char board_after [8][8], char* move, int index){
+    printf("index is %d\n", index);
+    if(index == 0 || index > 4) {
+        return;
+    }
+    if(index == 3){
         struct coordinate src;
         struct coordinate dest;
         dest.x = -1;
@@ -256,7 +272,7 @@ void compare(char board_after [8][8], char* move){
         return;
     }
     // Castling happened
-    if(k == 4){
+    if(index == 4){
         if(changes[0].x == 0){
             if(changes[0].y == 0){
                 strcpy(move, "e8c8");
@@ -283,7 +299,7 @@ void compare(char board_after [8][8], char* move){
     }
     char src[5] = {};
     char dest[5] = {};
-    for(int i = 0; i < k; i++){
+    for(int i = 0; i < index; i++){
         struct coordinate c = changes[i];
         if(board_after[c.x][c.y] == '-'){
             map_array_coordinate_to_chess_square(c.x, c.y, src);

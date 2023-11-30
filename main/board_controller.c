@@ -145,21 +145,30 @@ void app_main(void)
     // }
     // 
     move_type_t move_type;
+    ADC_setup();
+    board_state_init(active_chess_board);
+    board_state_print(active_chess_board);
+    //int reading;
 
     while(1){
+        
+        char cur_move[5] = {};
+        poll_board(active_chess_board, cur_move);
+        printf("move: %s | len = %d\n", cur_move, strlen(cur_move));
+        vTaskDelay(pdMS_TO_TICKS(1000));
 
-        for(int i = 0; i < 8; i++){
-            printf("Line %d:", i);
-            for(int j = 0; j < 8; j++){
-                select_xy_sensor(i,j);
-                vTaskDelay(pdMS_TO_TICKS(50));
-                reading = Get_Magnetic();
-                printf(" %d ", reading);
-            }
-            printf("\n");
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
-        printf("\n");
+        // for(int i = 0; i < 8; i++){
+        //     printf("Line %d:", i);
+        //     for(int j = 0; j < 8; j++){
+        //         select_xy_sensor(i,j);
+        //         vTaskDelay(pdMS_TO_TICKS(50));
+        //         reading = Get_Magnetic();
+        //         printf(" %d ", reading);
+        //     }
+        //     printf("\n");
+        //     vTaskDelay(pdMS_TO_TICKS(1000));
+        // }
+        // printf("\n");
         
     }
 

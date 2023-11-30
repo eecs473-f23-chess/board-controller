@@ -8,9 +8,11 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_continuous.h"
 #include "string.h"
+#include "types.h"
+#include "board_state.h"
 
-#define POSITIVE 1200
-#define NEGATIVE 800
+#define POSITIVE 1150
+#define NEGATIVE 875
 
 int Get_Magnetic();
 
@@ -22,10 +24,8 @@ void set_Board_Mux(int i);
 
 void select_xy_sensor(int x, int y);
 
-void poll_board(char board [8][8]);
+void poll_board(Board board[8][8], char * move_made);
 
-void compare(char board_after [8][8], char* move);
+void compare(char board_after [8][8], char* move, int index);
 
 void map_array_coordinate_to_chess_square(int x, int y, char* move);
-
-void update_board_based_off_opponent_move(char* move);
