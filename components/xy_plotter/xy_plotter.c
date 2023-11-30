@@ -12,6 +12,8 @@
 #include <string.h>
 #include <math.h>
 
+#include "electromagnet.h"
+
 // GPIOs
 #define X_DIR_GPIO              0
 #define X_STEP_GPIO             35
@@ -381,3 +383,174 @@ void xyp_joystick_control() {
     }
 }
 #endif
+piece_color_t get_piece_color(int piece) {
+    if(piece == 0) {
+        return NONE;
+    } else if(piece < 7) {
+        return WHITE;
+    } else {
+        return BLACK;
+    }
+}
+
+float get_half_y_step(float prev_y_cord) {
+    if(prev_y_cord < 4.5) {
+        return prev_y_cord + 0.5;
+    } else {
+        return prev_y_cord - 0.5;
+    }
+}
+
+int map_x_to_board_state(int cur_x, int cur_y) {
+    cur_x -= 1;
+    return abs(cur_y - 8);
+}
+
+int map_y_to_board_state(int cur_x, int cur_y) {
+    cur_y -= 1;
+    return cur_x - 1;
+}
+
+void add_target_square(struct move_sequence * sequence, float target_x, float target_y, piece_color_t color) {
+    sequence->squares_to_move[sequence->num_moves].target_x_cord = target_x;
+    sequence->squares_to_move[sequence->num_moves].target_y_cord = target_y;
+    sequence->squares_to_move[sequence->num_moves].target_emag_status = color;
+
+    sequence->num_moves++;
+}
+
+void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_state, const move_type_t move_type, char * move_to_make) {
+    sequence->num_moves = 0;
+
+    float prev_x_cord = (float)(move_to_make[0] - 'a' + 1);
+    float prev_y_cord = (float)(move_to_make[1] - '0');
+    float goal_x_cord = (float)(move_to_make[2] - 'a' + 1);
+    float goal_y_cord = (float)(move_to_make[3] - '0');
+
+    printf("%f %f | %f %f\n", prev_x_cord, prev_y_cord, goal_x_cord, goal_y_cord);
+    int dest_x = map_x_to_board_state(goal_x_cord, goal_y_cord);
+    int dest_y = map_y_to_board_state(goal_x_cord, goal_y_cord);
+    int goal_square_status = board_state_get_piece_on_square(board_state, dest_x, dest_y);
+    printf("DEST: %d %d", dest_x, dest_y);
+    // if there is soemthing on target square, campture has taken place
+    if(goal_square_status != NP) {  
+        printf("PIECE CAPTURE\n");
+        piece_color_t capture_piece_color = get_piece_color(goal_square_status);
+
+        // move to captured piece
+        add_target_square(sequence, goal_x_cord, goal_y_cord, NONE);
+
+        // grab captured piece and move to between squares
+        add_target_square(sequence, goal_x_cord, get_half_y_step(goal_y_cord), capture_piece_color);
+        
+        // move captured piece to side of board
+        if(goal_x_cord < 4.5) {
+            add_target_square(sequence, 0.5, get_half_y_step(goal_y_cord), capture_piece_color);
+        } else {
+            add_target_square(sequence, 8.5, get_half_y_step(goal_y_cord), capture_piece_color);
+        }
+    }
+
+    // move to piece that was played
+    add_target_square(sequence, prev_x_cord, prev_y_cord, NONE);
+
+    dest_x = map_x_to_board_state(prev_x_cord, prev_y_cord);
+    dest_y = map_y_to_board_state(prev_x_cord, prev_y_cord);
+    int played_piece = board_state_get_piece_on_square(board_state, dest_x, dest_y);
+    piece_color_t played_piece_color = get_piece_color(played_piece);
+
+    if(move_type == EN_PASSANT) {
+                // move played pawn
+        printf("EN PASSANT\n");
+        add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
+
+        // move to captured pawn
+        add_target_square(sequence, goal_x_cord, prev_y_cord, NONE);
+
+        // grab captured pawn and move to between squares
+        piece_color_t captured_pawn_color;
+        if(played_piece_color == WHITE) {
+            captured_pawn_color = BLACK;
+        } else {
+            captured_pawn_color = WHITE;
+        }
+        add_target_square(sequence, goal_x_cord, get_half_y_step(prev_y_cord), captured_pawn_color);
+
+        // move captured pawn off to side of board
+        if(goal_x_cord < 4.5) {
+            add_target_square(sequence, 0.5, get_half_y_step(prev_y_cord), captured_pawn_color);
+        } else {
+            add_target_square(sequence, 8.5, get_half_y_step(prev_y_cord), captured_pawn_color);
+        }
+
+        return;
+    }
+
+    if(move_type == CASTLE) {
+        // move king
+        printf("CASTLE\n");
+        add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
+
+        // move to rook
+        float rook_x;
+        float rook_goal;
+        if(goal_x_cord < prev_x_cord) {
+            // king moving left, rook is on left of king, will end up right of king
+            rook_x = goal_x_cord - 2;
+            rook_goal = goal_x_cord + 1;
+        } else {
+            rook_x = goal_x_cord + 1;
+            rook_goal = goal_x_cord - 1;
+        }
+        add_target_square(sequence, rook_x, goal_y_cord, NONE);
+
+        // grab rook and move to between squares
+        add_target_square(sequence, rook_x, get_half_y_step(goal_y_cord), played_piece_color);
+
+        // move rook to other side of king
+        add_target_square(sequence, rook_goal, get_half_y_step(goal_y_cord), played_piece_color);
+        add_target_square(sequence, rook_goal, goal_y_cord, played_piece_color);
+
+        return;
+    }
+
+    // knights can jump...
+    if(played_piece == WN || played_piece == BN) {
+        printf("KNIGHT MOVE\n");
+        float half_step;
+        if(fabs(goal_x_cord - prev_x_cord) == 1) {
+            if(prev_x_cord > goal_x_cord) {
+                half_step = prev_x_cord - 0.5;
+            } else {
+                half_step = prev_x_cord + 0.5;
+            }
+            add_target_square(sequence, half_step, prev_y_cord, played_piece_color);
+            add_target_square(sequence, half_step, goal_y_cord, played_piece_color);
+        } else {
+            if(prev_y_cord > goal_y_cord) {
+                half_step = prev_y_cord - 0.5;
+            } else {
+                half_step = prev_y_cord + 0.5;
+            }
+            add_target_square(sequence, prev_x_cord, half_step, played_piece_color);
+            add_target_square(sequence, goal_x_cord, half_step, played_piece_color);
+        }
+    } 
+
+    // move to final position
+    add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
+    
+    return;
+}
+
+void xyp_play_move(struct move_sequence* sequence) {
+    printf("Moving sequence:\n");
+    for (uint8_t i = 0; i < sequence->num_moves; ++i) {
+        printf("Moving to X: %f, Y: %f, EM: %d\n", sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord, sequence->squares_to_move[i].target_emag_status);
+        electromagnet_set(sequence->squares_to_move[i].target_emag_status);
+        xyp_set_board_pos(sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord);
+    }
+
+    electromagnet_off();
+    xyp_return_home();
+}

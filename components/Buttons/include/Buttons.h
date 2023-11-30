@@ -1,3 +1,5 @@
+#ifndef BUTTONS_H
+#define BUTTONS_H
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -16,3 +18,8 @@ void IRAM_ATTR draw_button(void * arg);
 void IRAM_ATTR resign_button(void * arg);
 void IRAM_ATTR make_game_button(void * arg);
 void IRAM_ATTR clock_button(void * arg);
+
+bool getMakeMove();
+void resetMakeMove();
+
+#endif

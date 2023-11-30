@@ -2,6 +2,7 @@
 #include "lichess_api.h"
 
 bool game_created = false;
+bool make_move = false;
 void buttons_init(){
     gpio_config_t io_conf = {};
     io_conf.intr_type = GPIO_INTR_NEGEDGE;
@@ -43,5 +44,17 @@ void make_game_button(void * arg){
 }
 
 void clock_button(void * arg){
-    xSemaphoreGiveFromISR(xSemaphore_MakeMove, NULL);
+    if (make_move == false) {
+        make_move = true;
+        xSemaphoreGiveFromISR(xSemaphore_MakeMove, NULL);
+    }
+    
+}
+
+bool getMakeMove(){
+    return make_move;
+}
+
+void resetMakeMove(){
+    make_move = false;
 }
