@@ -13,4 +13,5 @@ typedef enum OPPONENT_TYPE {
     SPECIFIC_PLAYER
 } opponent_type_t;
 
+
 #endif

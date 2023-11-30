@@ -625,6 +625,10 @@ void lichess_api_stream_event() {
     esp_http_client_read(client_stream, stream_data, 550);
     printf("%s\n", stream_data);
     set_game_id(stream_data);
+    if (strlen(GAME_ID) == 0){
+        printf("Either the opponent rejected the challenge, or game failed. NO GAME ID!\n");
+        return;
+    }
     set_color(stream_data);
     set_opponent_username_and_rating(stream_data);
     printf("My username: %s\n", user_name);
