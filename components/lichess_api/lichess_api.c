@@ -900,7 +900,7 @@ void lichess_api_login(const char* token, const uint16_t token_len) {
     strcpy(bearer_token, "Bearer ");
     // strncat(bearer_token, token, token_len);    
     printf("Inside lichess_api_login\n");
-    const char* replace = "lip_EFm5BNTU3XP4nvczcv1a";
+    const char* replace = "lip_rmolCKvEfYC6Fx81MIdQ";
     size_t len = strlen(replace) + 1;
     strncat(bearer_token, replace, len);
     printf("Bearer token %s\n", bearer_token);
@@ -1204,8 +1204,8 @@ void lichess_api_stream_move_of_game() {
             printf("Official last move: %s\n", get_last_move_played_by_opponent());
             printf("White has %lu time\n", white_time);
             printf("Black has %lu time\n", black_time);            
-            GraphicLCD_DispClock(white_time, true);
-            GraphicLCD_DispClock(black_time, false);
+            // GraphicLCD_DispClock(white_time, true);
+            // GraphicLCD_DispClock(black_time, false);
             if (strlen(get_last_move_played_by_opponent()) >= 4){
                 white_turn = white_turn ^ 1;
                 black_turn = black_turn ^ 1;
@@ -1222,7 +1222,9 @@ void lichess_api_stream_move_of_game() {
                 }
                 printf("Black turn to move\n");
             }
-
+            // if(getMakeMove() == true){
+            //     printf("Already polling!\n");
+            // }
             if ((white_turn && (strcmp(getColor(), "white") == 0)) || 
                 (black_turn && (strcmp(getColor(), "black") == 0))) {
                 // Opponent move
@@ -1235,6 +1237,8 @@ void lichess_api_stream_move_of_game() {
 
                 // Move piece
                 xyp_play_move(&sequence);
+                resetMakeMove();
+                vTaskDelay(pdMS_TO_TICKS(50));
             }
             board_state_print();
         }
@@ -1259,7 +1263,7 @@ void lichess_api_resign_game_helper(void *pvParameters){
 void lichess_api_handle_draw_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore_Draw, portMAX_DELAY);
-        lichess_api_handle_draw();
+       lichess_api_handle_draw();
     }
 }
 
