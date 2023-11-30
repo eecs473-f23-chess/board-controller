@@ -28,5 +28,5 @@ void xyp_joystick_control();
 #endif
 
 // check electrmagnet status before every move when using generate_moves()
-void xyp_generate_moves(struct move_sequence * sequence, Board current_state[8][8], const move_type_t move_type, char * move_to_make);
+void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_state, const move_type_t move_type, char * move_to_make);
 void xyp_play_move(struct move_sequence* sequence);

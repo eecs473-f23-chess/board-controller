@@ -417,7 +417,7 @@ void add_target_square(struct move_sequence * sequence, float target_x, float ta
     sequence->num_moves++;
 }
 
-void xyp_generate_moves(struct move_sequence * sequence, Board current_state[8][8], const move_type_t move_type, char * move_to_make) {
+void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_state, const move_type_t move_type, char * move_to_make) {
     sequence->num_moves = 0;
 
     float prev_x_cord = (float)(move_to_make[0] - 'a' + 1);
@@ -428,9 +428,11 @@ void xyp_generate_moves(struct move_sequence * sequence, Board current_state[8][
     printf("%f %f | %f %f\n", prev_x_cord, prev_y_cord, goal_x_cord, goal_y_cord);
     int dest_x = map_x_to_board_state(goal_x_cord, goal_y_cord);
     int dest_y = map_y_to_board_state(goal_x_cord, goal_y_cord);
-    int goal_square_status = board_state_get_piece_on_square(current_state, dest_x, dest_y);
+    int goal_square_status = board_state_get_piece_on_square(board_state, dest_x, dest_y);
+    printf("DEST: %d %d", dest_x, dest_y);
     // if there is soemthing on target square, campture has taken place
     if(goal_square_status != NP) {  
+        printf("PIECE CAPTURE\n");
         piece_color_t capture_piece_color = get_piece_color(goal_square_status);
 
         // move to captured piece
@@ -452,11 +454,12 @@ void xyp_generate_moves(struct move_sequence * sequence, Board current_state[8][
 
     dest_x = map_x_to_board_state(prev_x_cord, prev_y_cord);
     dest_y = map_y_to_board_state(prev_x_cord, prev_y_cord);
-    int played_piece = board_state_get_piece_on_square(current_state, dest_x, dest_y);
+    int played_piece = board_state_get_piece_on_square(board_state, dest_x, dest_y);
     piece_color_t played_piece_color = get_piece_color(played_piece);
 
     if(move_type == EN_PASSANT) {
                 // move played pawn
+        printf("EN PASSANT\n");
         add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
 
         // move to captured pawn
@@ -483,6 +486,7 @@ void xyp_generate_moves(struct move_sequence * sequence, Board current_state[8][
 
     if(move_type == CASTLE) {
         // move king
+        printf("CASTLE\n");
         add_target_square(sequence, goal_x_cord, goal_y_cord, played_piece_color);
 
         // move to rook
@@ -510,6 +514,7 @@ void xyp_generate_moves(struct move_sequence * sequence, Board current_state[8][
 
     // knights can jump...
     if(played_piece == WN || played_piece == BN) {
+        printf("KNIGHT MOVE\n");
         float half_step;
         if(fabs(goal_x_cord - prev_x_cord) == 1) {
             if(prev_x_cord > goal_x_cord) {

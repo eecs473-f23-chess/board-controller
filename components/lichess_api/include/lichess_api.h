@@ -22,7 +22,7 @@ void lichess_api_handle_draw(void);
 void lichess_api_resign_game(void);
 char* lichess_api_get_username(void);
 void lichess_api_set_user_country(char* other_user);
-void lichess_api_set_user_board_state(Board** state);
+void lichess_api_set_user_board_state(board_state_t* board_state);
 /*************************************************************/
 
 

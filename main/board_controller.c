@@ -46,15 +46,15 @@ void app_main(void)
     ADC_setup();   
     wifi_connect();
     lichess_api_init_client();
-    xyp_init();
-    electromag_init();
-    xyp_calibrate();
+    // xyp_init();
+    // electromag_init();
+    // xyp_calibrate();
     buttons_init();
 
     const char* token_fake = "fake";
 
     lichess_api_login(token_fake, 10);
-    set_specific_username("bagel_chips");
+    set_specific_username("Vulpius");
     xTaskCreate(&lichess_api_create_game_helper, "Create a lichess game", 8192, NULL, 5, NULL);
     xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 4, NULL);
     xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);

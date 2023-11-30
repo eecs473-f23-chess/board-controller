@@ -50,11 +50,11 @@ void wifi_init() {
     is_connected = false;
     ssid_set = false;
     pw_set = false;
-    char *ssid_replace = "Braeden's Galaxy S22 Ultra";
-    char *pwd_replace = "sefk6040";
+    // char *ssid_replace = "Braeden's Galaxy S22 Ultra";
+    // char *pwd_replace = "sefk6040";
     
-    // char *ssid_replace = "AiPhone";
-    // char *pwd_replace = "password";
+    char *ssid_replace = "AiPhone";
+    char *pwd_replace = "password";
 
 
     // char *ssid_replace = "Aditya's iPhone (3)";

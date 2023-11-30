@@ -39,7 +39,7 @@ static bool move_update = false;
 static bool want_moves = false;
 static bool draw_has_been_offered = false;
 static bool resigned_game = false;
-static Board user_board_state[8][8];
+static board_state_t user_board_state;
 uint32_t white_time = -1;
 uint32_t black_time = -1;
 static char opponent_username[100] = {};
@@ -148,8 +148,9 @@ void set_username(const char *json_str){
     cJSON *profile = cJSON_GetObjectItem(root, "profile");
     if(profile == NULL){
         printf("{set_username} profile isn't defined in root\n");
-        cJSON_Delete(root);
-        return;
+        country[0] = 'N';
+        country[1] = '/';
+        country[2] = 'A';
     }
     cJSON *country_node = cJSON_GetObjectItem(profile, "flag");
     if(country_node == NULL){
@@ -169,7 +170,7 @@ void set_username(const char *json_str){
         return;
     }
     for(int i = 0; i < strlen(user->valuestring); i++){
-        user_name[i] = (user->valuestring)[i];
+            user_name[i] = (user->valuestring)[i];
     }
     cJSON_Delete(root);
 }
@@ -235,7 +236,6 @@ void set_color(const char *json_str) {
     }
     cJSON_Delete(root);
 }
-
 
 void set_last_move_played_by_opponent(char* json, bool* is_move_played){
     cJSON *root = cJSON_Parse(json);
@@ -581,13 +581,15 @@ void lichess_api_make_move(char user_move[]) {
     strcat(URL, user_move);    
     const char* TAG = "LICHESS_POST_MOVE";
 
-    // xSemaphoreTake(xSemaphore_DataTransfer, portMAX_DELAY);
+    xSemaphoreTake(xSemaphore_DataTransfer, portMAX_DELAY);
     esp_http_client_config_t config_make_move = {
             .url = "https://lichess.org/api/",
             .path = "/get",
             .transport_type = HTTP_TRANSPORT_OVER_TCP,
-            .event_handler = _http_event_handler
+            .event_handler = _http_event_handler,
+            .user_data = response_buf,
     };
+    printf("Post URL: %s\n", URL);
     esp_http_client_handle_t client_make_move = esp_http_client_init(&config_make_move); 
     esp_http_client_set_url(client_make_move, URL);
     esp_http_client_set_method(client_make_move, HTTP_METHOD_POST); 
@@ -598,16 +600,25 @@ void lichess_api_make_move(char user_move[]) {
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
                 esp_http_client_get_status_code(client_make_move),
                 esp_http_client_get_content_length(client_make_move));
-        printf("%s successfully made {lichess_post_move}\n", user_move);
+        if (esp_http_client_get_status_code(client_make_move) == 400){
+            printf("ILLEGAL MOVE. Please try again\n");
+            scoreboard_clearline(3);
+            scoreboard_SetLine(3);
+            char illegal[20] = "Bad move, try again";
+            send_string(illegal);
+        }
+        else{
+            printf("%s successfully made {lichess_post_move}\n", user_move);
+        }
     } else {
         ESP_LOGE(TAG, "Lichess_make_a_move request failed: %s", esp_err_to_name(err));
     }
     esp_http_client_cleanup(client_make_move);
-    // xSemaphoreGive(xSemaphore_DataTransfer);
+    xSemaphoreGive(xSemaphore_DataTransfer);
 }
 
 void lichess_api_stream_event() {
-    // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
+    xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     printf("LICHESS_API_STREAM_EVENT SEMAPHORE_API\n");
     if (!logged_in) {
         return;
@@ -654,7 +665,7 @@ void lichess_api_stream_event() {
     printf("GAME ID: %s\n", GAME_ID);
     game_created = true;
     printf("Game created boolean is true\n");
-    // xSemaphoreGive(xSemaphore_API);
+    xSemaphoreGive(xSemaphore_API);
     esp_http_client_cleanup(client_stream);
     lichess_api_stream_move_of_game();
 }
@@ -664,6 +675,9 @@ void lichess_api_create_game(bool rated, int minutes, int increment, opponent_ty
     // https://lichess.org/api/board/seek 
     // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     board_state_init();
+    board_state_print();
+    white_turn = true;
+    black_turn = false;
     lichess_api_set_user_board_state(board_state_get_current_board_state());
     printf("Lichess create game API\n");
     scoreboard_clear();
@@ -726,13 +740,19 @@ void lichess_api_create_game(bool rated, int minutes, int increment, opponent_ty
         const char* TAG = "LICHESS_CREATE_GAME_SPECIFIC";
         esp_err_t err = esp_http_client_perform(client_create_game_specific);
         printf("Response code %d\n", esp_http_client_get_status_code(client_create_game_specific));
-        // ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client_create_game_specific), response_buf);
+        ESP_LOGI(TAG, "Response data: %.*s", (int)esp_http_client_get_content_length(client_create_game_specific), response_buf);
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
                     esp_http_client_get_status_code(client_create_game_specific),
                     esp_http_client_get_content_length(client_create_game_specific));
         } else {
             ESP_LOGE(TAG, "Lichess create a game request failed: %s", esp_err_to_name(err));
+        }
+        if (esp_http_client_get_status_code(client_create_game_specific) == 400) {
+            scoreboard_clearline(3);
+            scoreboard_SetLine(3);
+            char unable_to_create_challenge[20] = "Unable to challenge";
+            send_string(unable_to_create_challenge);
         }
         printf("CHALLENGE SENT TO %s", specific_opponent);
         esp_http_client_cleanup(client_create_game_specific);
@@ -868,6 +888,7 @@ void lichess_api_init_client(void) {
     xSemaphore_API = xSemaphoreCreateBinary();
     xSemaphore_DataTransfer = xSemaphoreCreateBinary();
     xSemaphoreGive(xSemaphore_DataTransfer);
+    xSemaphoreGive(xSemaphore_API);
     static const char* TAG = "LICHESS_INIT";
     client = esp_http_client_init(&config);
     logged_in = false;
@@ -879,7 +900,7 @@ void lichess_api_login(const char* token, const uint16_t token_len) {
     strcpy(bearer_token, "Bearer ");
     // strncat(bearer_token, token, token_len);    
     printf("Inside lichess_api_login\n");
-    const char* replace = "lip_i19yjcwGV72dlFM1n84i";
+    const char* replace = "lip_EFm5BNTU3XP4nvczcv1a";
     size_t len = strlen(replace) + 1;
     strncat(bearer_token, replace, len);
     printf("Bearer token %s\n", bearer_token);
@@ -921,7 +942,8 @@ void lichess_api_handle_draw(){
             .url = "https://lichess.org/api/",
             .path = "/get",
             .transport_type = HTTP_TRANSPORT_OVER_TCP,
-            .event_handler = _http_event_handler
+            .event_handler = _http_event_handler,
+            .user_data = response_buf,
     };
     esp_http_client_handle_t client_draw = esp_http_client_init(&config_draw); 
 
@@ -964,7 +986,8 @@ void lichess_api_resign_game(){
             .url = "https://lichess.org/api/",
             .path = "/get",
             .transport_type = HTTP_TRANSPORT_OVER_TCP,
-            .event_handler = _http_event_handler
+            .event_handler = _http_event_handler,
+            .user_data = response_buf,
         };
         esp_http_client_handle_t client_resign = esp_http_client_init(&config_resign);  
         printf("Inside lichess_api_resign_game\n");
@@ -997,10 +1020,10 @@ void lichess_api_resign_game(){
     }
 }
 
-void lichess_api_set_user_board_state(Board** state){
+void lichess_api_set_user_board_state(board_state_t* state){
     for(int i = 0; i < 8; i++){
         for(int j = 0; j < 8; j++){
-            user_board_state[i][j] = state[i][j];
+            user_board_state.board[i][j] = state->board[i][j];
         }
     }
 }
@@ -1041,7 +1064,8 @@ void lichess_api_stream_move_of_game() {
     esp_http_client_config_t config_stream = {
         .url = URL,
         .path = "/get",
-        .transport_type = HTTP_TRANSPORT_OVER_TCP
+        .transport_type = HTTP_TRANSPORT_OVER_TCP,
+        .user_data = response_buf,
     }; 
     esp_http_client_handle_t client_stream = esp_http_client_init(&config_stream);    
     esp_http_client_set_header(client_stream, "Authorization", bearer_token);
@@ -1176,39 +1200,43 @@ void lichess_api_stream_move_of_game() {
                 printf("No move played, continuing\n");
                 continue;
             }
-
             set_clock_time(stream_data);
             printf("Official last move: %s\n", get_last_move_played_by_opponent());
             printf("White has %lu time\n", white_time);
-            printf("Black has %lu time\n", black_time);             
+            printf("Black has %lu time\n", black_time);            
             GraphicLCD_DispClock(white_time, true);
             GraphicLCD_DispClock(black_time, false);
             if (strlen(get_last_move_played_by_opponent()) >= 4){
                 white_turn = white_turn ^ 1;
                 black_turn = black_turn ^ 1;
             }                    
-            if (white_turn){
+            if (white_turn) {
                 if (black_turn){
                     printf("Something is wrong. Both white and black are true\n");
                 }
                 printf("White player to move\n");
-            }  
+            }
             else {
-                if (white_turn){
+                if (white_turn) {
                     printf("Something is wrong. Both white and black are true\n");
                 }
                 printf("Black turn to move\n");
-            }       
+            }
 
-            move_type_t move_type;
-            board_state_update_board_based_on_opponent_move(get_last_move_played_by_opponent(), &move_type);
+            if ((white_turn && (strcmp(getColor(), "white") == 0)) || 
+                (black_turn && (strcmp(getColor(), "black") == 0))) {
+                // Opponent move
+                move_type_t move_type;
+                board_state_update_board_based_on_opponent_move(get_last_move_played_by_opponent(), &move_type);
 
-            // Get XY plotter moves to make
-            struct move_sequence sequence;
-            xyp_generate_moves(&sequence, user_board_state, move_type, get_last_move_played_by_opponent());
+                // Get XY plotter moves to make
+                struct move_sequence sequence;
+                xyp_generate_moves(&sequence, &user_board_state, move_type, get_last_move_played_by_opponent());
 
-            // Move piece
-            xyp_play_move(&sequence);
+                // Move piece
+                xyp_play_move(&sequence);
+            }
+            board_state_print();
         }
     }
     esp_http_client_cleanup(client_stream);    
@@ -1236,12 +1264,22 @@ void lichess_api_handle_draw_helper(void *pvParameters){
 }
 
 void lichess_api_make_move_helper(void *pvParameters){
+    printf("Starting make move helper\n");
     for(;;){
         xSemaphoreTake(xSemaphore_MakeMove, portMAX_DELAY);
-        char * move = "";
-        poll_board(board_state_get_current_board_state(), move);
-        printf("%s\n", move);
-        lichess_api_set_user_board_state(board_state_get_current_board_state());
-        lichess_api_make_move(move);
+        printf("Inside make move helper!\n");
+        char move[8] = {};
+        if (!poll_board(board_state_get_current_board_state(), move)) {
+            scoreboard_clearline(3);
+            scoreboard_SetLine(3);
+            char illegal_move[20] = "Bad move, try again";
+            send_string(illegal_move);
+        }
+        else {
+            printf("Legal move is %s\n", move);
+            board_state_print();
+            lichess_api_set_user_board_state(board_state_get_current_board_state());
+            lichess_api_make_move(move);
+        }
     }
 }
