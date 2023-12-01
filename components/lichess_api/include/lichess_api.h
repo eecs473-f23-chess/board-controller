@@ -6,6 +6,16 @@
 #include "board_state.h"
 #include "Buttons.h"
 
+#ifndef LICHESS_API_H
+#define LICHESS_API_H
+
+typedef enum TIME_CONTROL {
+        TC_10_0 = 0,
+        TC_10_5 = 1,
+        TC_15_10 = 2,
+        TC_30_0 = 3,
+        TC_30_20 = 4,
+} time_control_t;
 
 /*************************************************************/
 // These functions deal directly with the lichess api
@@ -14,10 +24,16 @@ void lichess_api_login(const char* token, const uint16_t token_len);
 void lichess_api_logout();
 bool lichess_api_is_logged_in();
 void lichess_api_get_email(void);
+void lichess_api_set_time_control(time_control_t tc);
+void lichess_api_get_time_control(time_control_t* tc);
+void lichess_api_set_opponent_type(opponent_type_t opponent_type);
+void lichess_api_get_opponent_type(opponent_type_t* opponent_type);
+void lichess_api_set_specific_username(char* specific_username, uint16_t len);
+void lichess_api_get_specific_username(char** username);
 void lichess_api_make_move(char* move);
-void lichess_api_stream_move_of_game();
+void lichess_api_stream_move_of_game(void *pvParameters);
 void lichess_api_stream_event(void);
-void lichess_api_create_game(bool rated, int minutes, int increment, opponent_type_t opponent);
+void lichess_api_create_game(bool rated);
 void lichess_api_get_account_info(void);
 void lichess_api_handle_draw(void);
 void lichess_api_resign_game(void);
@@ -45,7 +61,6 @@ bool get_opponent_move_update();
 void reset_opponent_move_update();
 char* get_last_move_played_by_opponent();
 char* get_user_country(char* username);
-void set_specific_username(char* specific_username);
 /*************************************************************/
 
 
@@ -53,3 +68,5 @@ void set_specific_username(char* specific_username);
 // These variables are used amongst other files
 extern bool game_created;
 /*************************************************************/
+
+#endif

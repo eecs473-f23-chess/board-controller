@@ -9,7 +9,7 @@
 #include <cJSON.h>
 #include <ctype.h>
 
-#include "../clock_display/include/clock_display.h"     
+#include "../clock_display/include/clock_display.h"
 #include "../score_display/include/score_display.h"
 #include "wifi.h"
 #include "Buttons.h"
@@ -17,6 +17,8 @@
 #include "xy_plotter.h"
 
 #define MAX_HTTP_OUTPUT_BUFFER  4096
+#define DEFAULT_TIME_CONTROL    TC_15_10
+#define DEFAULT_OPPONENT_TYPE   OPPONENT_RANDOM
 #define AUTHORIZATION_HEADER    "Authorization"
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
@@ -32,8 +34,10 @@ static char color[10] = {};
 static char user_name[100] = {};
 static char rating[5] = {};
 static char country[5] = {};
-static char specific_opponent[35] = {};
+static char specific_opponent[35] = "";
 static char bearer_token[64] = {};
+static time_control_t time_control = DEFAULT_TIME_CONTROL;
+static opponent_type_t opponent_type = DEFAULT_OPPONENT_TYPE;
 static bool logged_in;
 static bool move_update = false;
 static bool want_moves = false;
@@ -562,7 +566,30 @@ void lichess_api_set_user_country(char* other_user){
     xSemaphoreGive(xSemaphore_API);
 }
 
-void lichess_api_make_move(char user_move[]) {
+void lichess_api_set_time_control(time_control_t tc) {
+    time_control = tc;
+}
+void lichess_api_get_time_control(time_control_t* tc) {
+    *tc = time_control;
+}
+
+void lichess_api_set_opponent_type(opponent_type_t ot) {
+    opponent_type = ot;
+}
+void lichess_api_get_opponent_type(opponent_type_t* ot) {
+    *ot = opponent_type;
+}
+
+void lichess_api_set_specific_username(char* spec_user, uint16_t len) {
+    strncpy(specific_opponent, spec_user, len);
+    specific_opponent[len] = 0;
+}
+
+void lichess_api_get_specific_username(char** username) {
+    *username = specific_opponent;
+}
+
+void lichess_api_make_move(char* user_move) {
     // TODO, remove this comment after
     if (!logged_in) {
         return;
@@ -667,11 +694,11 @@ void lichess_api_stream_event() {
     printf("Game created boolean is true\n");
     xSemaphoreGive(xSemaphore_API);
     esp_http_client_cleanup(client_stream);
-    lichess_api_stream_move_of_game();
+    lichess_api_stream_move_of_game(NULL);
 }
 
 
-void lichess_api_create_game(bool rated, int minutes, int increment, opponent_type_t opponent) {
+void lichess_api_create_game(bool rated) {
     // https://lichess.org/api/board/seek 
     // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     board_state_init();
@@ -681,17 +708,54 @@ void lichess_api_create_game(bool rated, int minutes, int increment, opponent_ty
     lichess_api_set_user_board_state(board_state_get_current_board_state());
     printf("Lichess create game API\n");
     scoreboard_clear();
-    if (opponent == SPECIFIC_PLAYER){
+
+    int minutes;
+    int increment;
+    switch (time_control) {
+        case TC_10_0:
+            minutes = 10;
+            increment = 0;
+            break;
+        case TC_10_5:
+            minutes = 10;
+            increment = 5;
+            break;
+        case TC_15_10:
+            minutes = 15;
+            increment = 10;
+            break;
+        case TC_30_0:
+            minutes = 30;
+            increment = 0;
+            break;
+        case TC_30_20:
+            minutes = 30;
+            increment = 20;
+            break;
+        default:
+            printf("Undefined time control\n");
+            exit(1);
+    }
+
+    if(minutes <= 0){
+        printf("ERROR, MINUTES MUST BE >= 1");
+        return;
+    }
+
+    if (opponent_type == OPPONENT_SPECIFIC){
         int clock_time = minutes * 60;
         int clock_increment = increment;
+        printf("Making game with %s\n", specific_opponent);
         if (strlen(specific_opponent) == 0){
             printf("ERROR: Specific player username not initialized\n");
             return; 
         }
         char URL[100] = "https://lichess.org/api/challenge/";
         strcat(URL, specific_opponent);
+        printf("test 1\n");
         URL[strlen(URL)] = 0;
         char full_params[100] = {};
+        printf("test 2\n");
         esp_http_client_config_t config_create_game_specific = {
                 .url = "https://lichess.org/api/board/seek",
                 .path = "/get",
@@ -700,6 +764,7 @@ void lichess_api_create_game(bool rated, int minutes, int increment, opponent_ty
                 .user_data = response_buf
         };
         esp_http_client_handle_t client_create_game_specific = esp_http_client_init(&config_create_game_specific); 
+        printf("test 3\n");
         if (!logged_in) {
             printf("Can't create game. Login not detected\n");
             return;
@@ -709,18 +774,18 @@ void lichess_api_create_game(bool rated, int minutes, int increment, opponent_ty
             printf("Clock time has to be > 0!");
             return;
         }
-
+        printf("test 4\n");
         rated ? strcat(full_params, "rated=true&") : strcat(full_params, "rated=false&");
         char fullMin[100] = "clock.limit=";
 
-        int min_size = (int)((ceil(log10(clock_time))+1)*sizeof(char));
+        int min_size = 100;
         char min_as_string[min_size+1];
         sprintf(min_as_string, "%d", clock_time);
         strcat(fullMin, min_as_string);
-
+        printf("test 5\n");
 
         strcat(fullMin, "&clock.increment=");   
-        int increment_size = (int)((ceil(log10(clock_increment))+1)*sizeof(char));
+        int increment_size = 100;
         char incr_as_string[increment_size+1];
         sprintf(incr_as_string, "%d", clock_increment);
         strcat(fullMin, incr_as_string);
@@ -782,14 +847,14 @@ void lichess_api_create_game(bool rated, int minutes, int increment, opponent_ty
         char fullMin[100] = "time=";
         char fullInc[100] = "&increment=";
 
-        int min_size = (int)((ceil(log10(minutes))+1)*sizeof(char));
+        int min_size = 100;
 
         char min_as_string[min_size+1];
         sprintf(min_as_string, "%d", minutes);
         strcat(fullMin, min_as_string);
         strcat(FULL_PARAMS, fullMin);
 
-        int increment_size = (int)((ceil(log10(increment))+1)*sizeof(char));
+        int increment_size = 100;
         char incr_as_string[increment_size+1];
         sprintf(incr_as_string, "%d", increment);
         strcat(fullInc, incr_as_string);
@@ -824,14 +889,6 @@ void lichess_api_create_game(bool rated, int minutes, int increment, opponent_ty
     
     lichess_api_stream_event();
 }
-
-void set_specific_username(char* spec_user){
-    int n = strlen(spec_user);
-    for(int i = 0; i < n; i++){
-        specific_opponent[i] = spec_user[i];
-    }
-}
-
 
 void lichess_api_get_email(void)
 {
@@ -895,14 +952,11 @@ void lichess_api_init_client(void) {
     ESP_LOGI(TAG, "Complete");
 }
 
-// TODO, REPLACE THIS BACK
 void lichess_api_login(const char* token, const uint16_t token_len) {
     strcpy(bearer_token, "Bearer ");
     // strncat(bearer_token, token, token_len);    
     printf("Inside lichess_api_login\n");
-    const char* replace = "lip_rmolCKvEfYC6Fx81MIdQ";
-    size_t len = strlen(replace) + 1;
-    strncat(bearer_token, replace, len);
+    strncat(bearer_token, token, token_len);
     printf("Bearer token %s\n", bearer_token);
     esp_http_client_set_header(client, "Authorization", bearer_token);
     lichess_api_get_account_info();
@@ -1028,7 +1082,7 @@ void lichess_api_set_user_board_state(board_state_t* state){
     }
 }
 
-void lichess_api_stream_move_of_game() {
+void lichess_api_stream_move_of_game(void *pvParameters) {
     // https://lichess.org/api/board/game/stream/{gameId}
     printf("Inside Lichess_api_stream_move_of_game\n");
     static const char* TAG = "LICHESS STREAM MOVE";
@@ -1249,7 +1303,7 @@ void lichess_api_stream_move_of_game() {
 void lichess_api_create_game_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore, portMAX_DELAY);
-        lichess_api_create_game(true, 15, 5, SPECIFIC_PLAYER);
+        lichess_api_create_game(true);
     }    
 }
 
