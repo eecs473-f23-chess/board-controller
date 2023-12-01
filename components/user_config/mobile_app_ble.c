@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include "Buttons.h"
 #include "lichess_api.h"
 #include "wifi.h"
 
@@ -31,6 +32,7 @@
 #define TIME_CONTROL_CHAR_UUID      0x01
 #define OPPONENT_TYPE_CHAR_UUID     0x02
 #define OPPONENT_USERNAME_CHAR_UUID 0x03
+#define BUTTON_CHAR_UUID            0x04
 
 // Characteristic handles
 static uint16_t wifi_ssid_char_handle;
@@ -40,6 +42,7 @@ static uint16_t lichess_bearer_token_char_handle;
 static uint16_t time_control_char_handle;
 static uint16_t opponent_type_char_handle;
 static uint16_t opponent_username_char_handle;
+static uint16_t button_char_handle;
 
 static uint8_t adv_manufacturer_data[] = {0xFF, 0xFF, 0x41, 0x41, 0x42, 0x4D, 0x52};
 
@@ -186,7 +189,7 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
                     break;
                 case GAME_SERVICE_UUID:
                     ESP_LOGI(TAG, "Found game service");
-                    expected_num_chars = 3;
+                    expected_num_chars = 4;
                     break;
                 default:
                     ESP_LOGW(TAG, "Received unhandled service UUID %" PRIu16, service_uuid);
@@ -260,6 +263,10 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
                             case OPPONENT_USERNAME_CHAR_UUID:
                                 ESP_LOGI(TAG, "Found opponent username characteristic");
                                 opponent_username_char_handle = char_handle;
+                                break;
+                            case BUTTON_CHAR_UUID:
+                                ESP_LOGI(TAG, "Found button characteristic");
+                                button_char_handle = char_handle;
                                 break;
                             default:
                                 ESP_LOGW(TAG, "Unexpected characteristic UUID %" PRIu16, char_uuid);
@@ -377,6 +384,26 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
             else if (handle == opponent_username_char_handle) {
                 ESP_LOGI(TAG, "Received opponent username %.*s", data_len, data);
                 lichess_api_set_specific_username((char*)(data), data_len);
+            }
+            else if (handle == button_char_handle) {
+                int button = *data;
+                printf("Received button %d\n", button);
+                switch (button) {
+                    case 1:
+                        make_game_button(NULL);
+                        break;
+                    case 2:
+                        clock_button(NULL);
+                        break;
+                    case 3:
+                        draw_button(NULL);
+                        break;
+                    case 4:
+                        resign_button(NULL);
+                        break;
+                    default:
+                        ESP_LOGE(TAG, "Unhandled button type");
+                }
             }
             else {
                 ESP_LOGW(TAG, "Data from unhandled characteristic handle received");

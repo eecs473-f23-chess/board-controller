@@ -1310,14 +1310,14 @@ void lichess_api_create_game_helper(void *pvParameters){
 void lichess_api_resign_game_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore_Resign, portMAX_DELAY);
-        //lichess_api_resign_game();
+        lichess_api_resign_game();
     }
 }
 
 void lichess_api_handle_draw_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore_Draw, portMAX_DELAY);
-       //lichess_api_handle_draw();
+       lichess_api_handle_draw();
     }
 }
 
