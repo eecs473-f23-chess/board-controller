@@ -242,10 +242,10 @@ void set_color(const char *json_str) {
 }
 
 void set_last_move_played_by_opponent(char* json, bool* is_move_played){
+    *is_move_played = false;
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
         printf("{set_last_move_played_by_opponent} ERROR PARSING JSON\n");
-        *is_move_played = false;
         return;
     }
     cJSON *type = cJSON_GetObjectItem(root, "type");
@@ -260,7 +260,6 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
     else{
         printf("{set_last_move_played_by_opponent} Type isn't gameState of gameFull\n");
         cJSON_Delete(root);
-        *is_move_played = false;
         return;
     }
     char* full_moves = moves->valuestring;
@@ -270,12 +269,8 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
         last_move_played_by_opponent[1] = '/';
         last_move_played_by_opponent[2] = 'A';
         last_move_played_by_opponent[3] = 0;
-        *is_move_played = false;
     }
-    else if (strcmp(full_moves + n - 4, last_move_played_by_opponent) == 0) {
-        *is_move_played = false;
-    }
-    else{
+    else if (strcmp(full_moves + n - 4, last_move_played_by_opponent) != 0) {
         char first_char = full_moves[n-4];
 
         if (isdigit(first_char)){
@@ -306,7 +301,6 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
             }   
             else{
                 printf("{handle_promotion}. Didn't find qrnb, found %c instead\n", piece_to_promote_to);
-                *is_move_played = false;
                 return;
             }
             printf("%s | %d\n", promotion_sentence, strlen(promotion_sentence));
@@ -325,71 +319,113 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
     cJSON_Delete(root);
 }
 
-char* check_result_of_game(char *json){
+void check_result_of_game(char *json, char* const res){
     char* game_in_progress = "GAME IN PROGRESS";
     char* white_resigned = "0-1 (Black wins)";
     char* black_resigned = "1-0 (White wins)";
     char* game_aborted = "GAME ABORTED";
+
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
         printf("{check_result_of_game} ERROR PARSING JSON\n");
-        return NULL;
+        res[0] = 0;
+        return;
     }
     cJSON *type = cJSON_GetObjectItem(root, "type");
     if(type == NULL){
         printf("{check_result_of_game} Type error in check result\n");
         cJSON_Delete(root);
-        return NULL;
+        res[0] = 0;
+        return;
     }
-    cJSON *status = NULL;
+    
     char* game_status = NULL;
     if(strcmp(type->valuestring, "gameFull") == 0){
-        status = cJSON_GetObjectItem(root, "state");
-        if(status == NULL){
-            printf("{check_result_of_game} Status is null\n");
+        cJSON* game_full_state = cJSON_GetObjectItem(root, "state");
+        if(game_full_state == NULL){
+            printf("{check_result_of_game} State in json is null\n");
             cJSON_Delete(root);
-            return NULL;
+            res[0] = 0;
+            return;
         }
+
+        cJSON* game_full_status = cJSON_GetObjectItem(game_full_state, "status");
+        game_status = game_full_status->valuestring;
+        if(game_status == NULL){
+            printf("{check_result_of_game} Game status is null\n");
+            cJSON_Delete(root);
+            res[0] = 0;
+            return;
+        }
+        
+        if(strcmp(game_status, "started") == 0){
+            cJSON_Delete(root);
+            strcpy(res, game_status);
+            return;
+        }
+
+        printf("Game full had game status as %s, which wasn't expected\n", game_status);
+        return;
+
     }
     else if(strcmp(type->valuestring, "gameState") == 0) {
-        status = cJSON_GetObjectItem(root, "status");
-
+        cJSON* status = cJSON_GetObjectItem(root, "status");
+        if(status == NULL){
+            printf("NOT SUPPOSED TO BE HERE? {check_result_of_game} Status is null in get result\n");
+            return;
+        }
+        game_status = status->valuestring;
+        if(strcmp(game_status, "aborted") == 0){
+            printf("Game aborted!\n");
+            cJSON_Delete(root);
+            strcpy(res, game_aborted);
+            return;
+        }
         cJSON* draw_potentialb = cJSON_GetObjectItem(root, "bdraw");
         if(draw_potentialb != NULL){
             printf("Black has offered a draw!\n");
             draw_has_been_offered = true;
             scoreboard_OfferDraw(false);
+            strcpy(res, game_in_progress);
+            return;
         }
-
         cJSON* draw_potentialw = cJSON_GetObjectItem(root, "wdraw");
         if(draw_potentialw != NULL){
             printf("White has offered a draw!\n");
             draw_has_been_offered = true;
             scoreboard_OfferDraw(true);
+            strcpy(res, game_in_progress);
+            return;
         }
-
-        if(strcmp(status->valuestring, "aborted") == 0){
-            printf("Game aborted!\n");
-            // TODO, make this work fine. 
-            cJSON_Delete(root);
-            return game_aborted;
+        
+        if(strcmp(game_status, "resign") == 0 || strcmp(game_status, "mate") == 0){
+            cJSON *winner = cJSON_GetObjectItem(root, "winner");
+            char* winner_str = winner->valuestring;
+            if(strcmp(winner_str, "white") == 0){
+                cJSON_Delete(root);
+                strcpy(res, black_resigned);
+                return;
+            }
+            if(strcmp(winner_str, "black") == 0){
+                cJSON_Delete(root);
+                strcpy(res, white_resigned);
+                return;
+            }
         }
-        if(status == NULL){
-            printf("{check_result_of_game} Status is null in get result\n");
-        }
-        game_status = status->valuestring;
     }
     else if(strcmp(type->valuestring, "chatLine") == 0){
         cJSON* text = cJSON_GetObjectItem(root, "text");
-        char* firstOption = "Draw offer accepted";
-        if(strcmp(firstOption, text->valuestring) == 0){
+        char* draw_accepted_text = "Draw offer accepted";
+        if(strcmp(draw_accepted_text, text->valuestring) == 0){
             cJSON_Delete(root);
-            return "1/2 - 1/2. Game drawn";
+            strcpy(res, draw_accepted_text);
+            return;
         }
         else{
             char* txtVal = text->valuestring;
+            strcpy(res, txtVal);
             cJSON_Delete(root);
-            return txtVal;
+            return;
         }
     }
     else if(strcmp(type->valuestring, "opponentGone") == 0){
@@ -398,45 +434,25 @@ char* check_result_of_game(char *json){
         if(((gone->type) & 0xFF) == cJSON_True){
             if(claim != NULL && (claim->valueint) == 0 && strcmp(getColor(), "white") == 0){
                 cJSON_Delete(root);
-                return black_resigned;
+                strcpy(res, black_resigned);
+                return;
             }
             else if (claim != NULL && (claim->valueint) == 0 && strcmp(getColor(), "black") == 0){
                 cJSON_Delete(root);
-                return white_resigned;
+                strcpy(res, white_resigned);
+                return;
             }
             else{
+                printf("Opponent left game, but they still have time to come back!\n");
                 cJSON_Delete(root);
-                return game_in_progress;
+                strcpy(res, game_in_progress);
+                return;
             }
         }
     }
-    if(strcmp(type->valuestring, "gameFull") == 0){
-        cJSON* real_status = cJSON_GetObjectItem(status, "status");
-        game_status = real_status->valuestring;
-    }
-    if(game_status == NULL){
-        printf("{check_result_of_game} Game status is null\n");
-        cJSON_Delete(root);
-        return NULL;
-    }
-    if(strcmp(game_status, "started") == 0){
-        cJSON_Delete(root);
-        return game_in_progress;
-    }
-    else if(strcmp(game_status, "resign") == 0 || strcmp(game_status, "mate") == 0){
-        cJSON *winner = cJSON_GetObjectItem(root, "winner");
-        char* winner_str = winner->valuestring;
-        if(strcmp(winner_str, "white") == 0){
-            cJSON_Delete(root);
-            return black_resigned;
-        }
-        if(strcmp(winner_str, "black") == 0){
-            cJSON_Delete(root);
-            return white_resigned;
-        }
-    }
+    
     cJSON_Delete(root);
-    return "{check_result_of_game} DIDNT RETURN ANYTHING";    
+    printf("{check result of game} had unexpected behaivior. Check it");
 }
 
 char* get_last_move_played_by_opponent(){
@@ -446,7 +462,7 @@ char* get_last_move_played_by_opponent(){
 void set_clock_time(char *json){
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
-        printf("ERROR in set_clock_time\n");
+        printf("{set_clock_time} Root JSON is NULL.\n");
         return;
     }
     cJSON *type = cJSON_GetObjectItem(root, "type");
@@ -594,6 +610,7 @@ void lichess_api_get_specific_username(char** username) {
 
 void lichess_api_make_move(char* user_move) {
     // TODO, remove this comment after
+    
     if (!logged_in) {
         return;
     }
@@ -630,18 +647,18 @@ void lichess_api_make_move(char* user_move) {
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
                 esp_http_client_get_status_code(client_make_move),
                 esp_http_client_get_content_length(client_make_move));
-        if (esp_http_client_get_status_code(client_make_move) == 400){
+    } else {
+        ESP_LOGE(TAG, "Lichess_make_a_move request failed: %s", esp_err_to_name(err));
+    }
+    if (esp_http_client_get_status_code(client_make_move) != 200){
             printf("ILLEGAL MOVE. Please try again\n");
             scoreboard_clearline(3);
             scoreboard_SetLine(3);
             char illegal[20] = "Bad move, try again";
             send_string(illegal);
-        }
-        else{
-            printf("%s successfully made {lichess_post_move}\n", user_move);
-        }
-    } else {
-        ESP_LOGE(TAG, "Lichess_make_a_move request failed: %s", esp_err_to_name(err));
+    }
+    else{
+        printf("%s successfully made {lichess_post_move}\n", user_move);
     }
     esp_http_client_cleanup(client_make_move);
     xSemaphoreGive(xSemaphore_DataTransfer);
@@ -651,6 +668,8 @@ void lichess_api_stream_event() {
     xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
     printf("LICHESS_API_STREAM_EVENT SEMAPHORE_API\n");
     if (!logged_in) {
+        printf("Lichess login failed\n");
+        game_created = false;
         return;
     }
 
@@ -670,6 +689,12 @@ void lichess_api_stream_event() {
     esp_http_client_fetch_headers(client_stream);
 
     printf("Stream event once Response code %d\n", esp_http_client_get_status_code(client_stream));
+
+    if (esp_http_client_get_status_code(client_stream) != 200) {
+        printf("Lichess stream event return code wasn't 200\n");
+        game_created = false;
+        return;
+    }
     esp_http_client_read(client_stream, stream_data, 550);
     printf("%s\n", stream_data);
     set_game_id(stream_data);
@@ -704,6 +729,17 @@ void lichess_api_stream_event() {
 void lichess_api_create_game(bool rated) {
     // https://lichess.org/api/board/seek 
     // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
+
+    // If we aren't logged in, set game_created 
+    if (!logged_in) {
+        printf("Can't create game. Login not detected\n");
+        game_created = false;
+        return;
+    }
+    if (!wifi_is_connected()){
+        printf("Wifi Disconnected! Exiting now\n");
+        game_created = false;
+    }
     board_state_init();
     board_state_print();
     white_turn = true;
@@ -742,15 +778,22 @@ void lichess_api_create_game(bool rated) {
 
     if(minutes <= 0){
         printf("ERROR, MINUTES MUST BE >= 1");
+        game_created = false;
         return;
     }
 
     if (opponent_type == OPPONENT_SPECIFIC){
         int clock_time = minutes * 60;
         int clock_increment = increment;
+        if (clock_time <= 0){
+            printf("Clock time has to be > 0!");
+            game_created = false;
+            return;
+        }
         printf("Making game with %s\n", specific_opponent);
         if (strlen(specific_opponent) == 0){
             printf("ERROR: Specific player username not initialized\n");
+            game_created = false;
             return; 
         }
         char URL[100] = "https://lichess.org/api/challenge/";
@@ -765,15 +808,7 @@ void lichess_api_create_game(bool rated) {
                 .user_data = response_buf
         };
         esp_http_client_handle_t client_create_game_specific = esp_http_client_init(&config_create_game_specific); 
-        if (!logged_in) {
-            printf("Can't create game. Login not detected\n");
-            return;
-        }
-
-        if (clock_time <= 0){
-            printf("Clock time has to be > 0!");
-            return;
-        }
+        
         rated ? strcat(full_params, "rated=true&") : strcat(full_params, "rated=false&");
         char fullMin[100] = "clock.limit=";
 
@@ -809,13 +844,19 @@ void lichess_api_create_game(bool rated) {
                     esp_http_client_get_status_code(client_create_game_specific),
                     esp_http_client_get_content_length(client_create_game_specific));
         } else {
+            game_created = false;
+            esp_http_client_cleanup(client_create_game_specific);
             ESP_LOGE(TAG, "Lichess create a game request failed: %s", esp_err_to_name(err));
+            return;
         }
-        if (esp_http_client_get_status_code(client_create_game_specific) == 400) {
+        if (esp_http_client_get_status_code(client_create_game_specific) != 200) {
             scoreboard_clearline(3);
             scoreboard_SetLine(3);
             char unable_to_create_challenge[20] = "Unable to challenge";
             send_string(unable_to_create_challenge);
+            game_created = false;
+            esp_http_client_cleanup(client_create_game_specific);
+            return;
         }
         printf("CHALLENGE SENT TO %s", specific_opponent);
         esp_http_client_cleanup(client_create_game_specific);
@@ -829,13 +870,10 @@ void lichess_api_create_game(bool rated) {
             .user_data = response_buf
         };
         esp_http_client_handle_t client_create_game = esp_http_client_init(&config_create_game); 
-        if (!logged_in) {
-            printf("Can't create game. Login not detected\n");
-            return;
-        }
-
         if(minutes <= 0){
             printf("ERROR, MINUTES MUST BE >= 1");
+            game_created = false;
+            esp_http_client_cleanup(client_create_game);
             return;
         }    
         char FULL_PARAMS[1000] = {};
@@ -878,13 +916,23 @@ void lichess_api_create_game(bool rated) {
                     esp_http_client_get_status_code(client_create_game),
                     esp_http_client_get_content_length(client_create_game));
         } else {
+            game_created = false;
+            esp_http_client_cleanup(client_create_game);
             ESP_LOGE(TAG, "Lichess create a game request failed: %s", esp_err_to_name(err));
+            return;
         }
-        // TODO, Verify that this xSemaphoreGive is placed correctly
-        // xSemaphoreGive(xSemaphore_API);
+        if (esp_http_client_get_status_code(client_create_game) != 200) {
+            scoreboard_clearline(3);
+            scoreboard_SetLine(3);
+            char unable_to_create_challenge[20] = "Unable to challenge";
+            send_string(unable_to_create_challenge);
+            game_created = false;
+            esp_http_client_cleanup(client_create_game);
+            return;
+        }
         esp_http_client_cleanup(client_create_game);
     }
-    
+    game_created = true;
     lichess_api_stream_event();
 }
 
@@ -952,7 +1000,6 @@ void lichess_api_init_client(void) {
 
 void lichess_api_login(const char* token, const uint16_t token_len) {
     strcpy(bearer_token, "Bearer ");
-    // strncat(bearer_token, token, token_len);    
     printf("Inside lichess_api_login\n");
     strncat(bearer_token, token, token_len);
     printf("Bearer token %s\n", bearer_token);
@@ -972,20 +1019,13 @@ bool lichess_api_is_logged_in() {
 
 void lichess_api_handle_draw(){
     // https://lichess.org/api/board/game/{gameId}/draw/{accept}
-    // char test_game[20] = "8h1VitrNUDOb";
-    // for(int i = 0; i < strlen(test_game); i++){
-        // GAME_ID[i] = test_game[i];
-    // }
+    printf("Inside lichess handle draw\n");
     if(strlen(GAME_ID) == 0){
         printf("Game isn't active. Can't offer or accept a draw!");
         return;
     }
-    
-    printf("Inside lichess_api_handle_draw\n");
     const char* TAG = "LICHESS_HANDLE_DRAW";
     char URL[100] = "https://lichess.org/api/board/game/";
-    // char TEST_GAME_ID[100] = "2MEEJa2mZrda";
-    // strcat(URL, TEST_GAME_ID);
     strcat(URL, GAME_ID);
     strcat(URL, "/draw/");
     strcat(URL, "yes");
@@ -1012,27 +1052,23 @@ void lichess_api_handle_draw(){
     } else {
             ESP_LOGE(TAG, "Lichess_handle_draw request failed: %s", esp_err_to_name(err));
     }
+
+    if (esp_http_client_get_status_code(client_draw) != 200){
+        printf("HTTP Request error in lichess_draw. Got code %d\n", esp_http_client_get_status_code(client_draw));
+    }
     esp_http_client_cleanup(client_draw);
     xSemaphoreGive(xSemaphore_DataTransfer);
 }
 
 void lichess_api_resign_game(){
     // https://lichess.org/api/board/game/{gameId}/resign
-
-    // char test_game[20] = "8h1VitrNUDOb";
-    // for(int i = 0; i < strlen(test_game); i++){
-    //     GAME_ID[i] = test_game[i];
-    // }
+    printf("Inside lichess resign game!\n");
     if(strlen(GAME_ID) == 0){
-        printf("Game isn't active. Can't resign!");
+        printf("NO GAME ID DETECTED. Can't resign!");
         return;
     }
     if(resigned_game == false){
         resigned_game = true;
-        if(strlen(GAME_ID) == 0){
-            printf("lichess_api_resign_game. GAME ID IS NOT SET\n");
-            return;
-        }
 
         esp_http_client_config_t config_resign = {
             .url = "https://lichess.org/api/",
@@ -1042,7 +1078,6 @@ void lichess_api_resign_game(){
             .user_data = response_buf,
         };
         esp_http_client_handle_t client_resign = esp_http_client_init(&config_resign);  
-        printf("Inside lichess_api_resign_game\n");
         const char* TAG = "LICHESS_RESIGN_GAME";
 
         char URL[100] = "https://lichess.org/api/board/game/";
@@ -1063,6 +1098,11 @@ void lichess_api_resign_game(){
                     esp_http_client_get_content_length(client_resign));
         } else {
             ESP_LOGE(TAG, "Lichess_resign_game request failed: %s", esp_err_to_name(err));
+            resigned_game = false;
+        }
+        if (esp_http_client_get_status_code(client_resign) != 200){
+            printf("{resign game} return code wasn't 200. Some error happend!\n");
+            resigned_game = false;
         }
         esp_http_client_cleanup(client_resign);
         xSemaphoreGive(xSemaphore_DataTransfer);
@@ -1085,29 +1125,18 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
     printf("Inside Lichess_api_stream_move_of_game\n");
     static const char* TAG = "LICHESS STREAM MOVE";
 
-    // char test_game[20] = "ZLYYEggbwI8j";
-    // for(int i = 0; i < strlen(test_game); i++){
-    //     GAME_ID[i] = test_game[i];
-    // }
-
-    // char white[10] = "black";
-    // for(int i = 0; i < strlen(white); i++){
-    //     color[i] = white[i];
-    // }
-
-    // TODO, uncomment this after done
     if (!logged_in) {
+        game_created = false;
         return;
     }
 
     if(strlen(GAME_ID) == 0){
         printf("ERROR, GAME ID NOT DETECTED\n");
+        game_created = false;
         return;
     }
 
     char URL[100] = "https://lichess.org/api/board/game/stream/";
-    // char TEST_GAME_ID[100] = "2MEEJa2mZrda";
-    // strcat(URL, TEST_GAME_ID);
     strcat(URL, GAME_ID);
     URL[strlen(URL)] = 0;
     printf("URL %s\n", URL);
@@ -1125,13 +1154,12 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
     esp_err_t err;
     if ((err = esp_http_client_open(client_stream, 0)) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err));
+        game_created = false;
         return;
     }
     esp_http_client_fetch_headers(client_stream);
     want_moves = true;
     xSemaphoreGive(xSemaphore_DataTransfer);
-    
-    // int moves = 0;
 
     // This while loop exists as long as the game is in progress (Streaming moves)
     while(1){ 
@@ -1139,29 +1167,18 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             ESP_LOGE(TAG, "WIFI DISCONNECTED");
             break;
         }
-        // printf("init stream data\n");
         char stream_data[1500] = {};
         int curr_stream_data_len = 0;
-        // printf("init buffer\n");
         char buffer[5] = {};
-        // Data transfer semaphore is taken so that you can't perform a resign operation when 
-        // the move is being read
         xSemaphoreTake(xSemaphore_DataTransfer, portMAX_DELAY);
-        // printf("LICHESS STREAM HAS DATA TRANSFER SEMAPHORE\n");
-        // Reading the json of each move played (by either us or the opponent)
         while(buffer[0] != '\n'){
-            // printf("attempting to read 1 byte\n");
             esp_http_client_read(client_stream, buffer, 1);
             if (buffer[0] == '\0'){
-                // printf("Buffer byte is NULL\n");
                 continue;
-            }
-            // printf("putting 1 byte into stream data\n");            
+            }            
             stream_data[curr_stream_data_len] = buffer[0];
             curr_stream_data_len += 1;
-            // printf("stream data has %d\n", curr_stream_data_len);
         }
-        // printf("finished reading into buffer\n");
         if(strlen(stream_data) > 1){
             printf("Stream is %s\n", stream_data);
         }
@@ -1174,11 +1191,17 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
         } else {
             ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
         }
+        
+        if (esp_http_client_get_status_code(client_stream) != 200){
+            printf("Lichess stream move of game json had error code. Trying again!\n");
+            continue;
+        }
+
         xSemaphoreGive(xSemaphore_DataTransfer);
-        // printf("LICHESS STREAM GAVE DATA TRANSFER SEMAPHORE\n");
         
         if(strlen(stream_data) > 1){            
-            char* result = check_result_of_game(stream_data);
+            char result[40] = {};
+            check_result_of_game(stream_data, result);
             if(strcmp(result, "GAME IN PROGRESS") == 0){
                 printf("Game in progress\n");
             }
@@ -1190,10 +1213,8 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 scoreboard_WinUpdate(p1, p2);
                 printf("Game Ended: %s\n", result);
                 GAME_ID[0] = '\0';
-                if((int)strlen(GAME_ID) == 0){
-                    printf("GAME ID IS EMPTY\n");
-                }
                 game_created = false;
+                resigned_game = false;
                 break;
             }
             else if(strcmp(result, "0-1 (Black wins)") == 0){
@@ -1204,10 +1225,8 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 scoreboard_WinUpdate(p1, p2);
                 printf("Game Ended: Black wins. 0-1\n");
                 GAME_ID[0] = '\0';
-                if((int)strlen(GAME_ID) == 0){
-                    printf("GAME ID IS EMPTY\n");
-                }
                 game_created = false;
+                resigned_game = false;
                 break;
             }
             else if(strcmp(result, "1-0 (White wins)") == 0){
@@ -1218,19 +1237,19 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 scoreboard_WinUpdate(p1, p2);
                 GAME_ID[0] = '\0';
                 printf("Game Ended: White wins. 1-0\n");
-                if((int)strlen(GAME_ID) == 0){
-                    printf("GAME ID IS EMPTY\n");
-                }
                 game_created = false;
+                resigned_game = false;
                 break;
             }
             else if(strcmp(result, "Black declines draw") == 0){
                 draw_has_been_offered = false;
                 scoreboard_DrawDeclined();
+                continue;
             }
             else if(strcmp(result, "White declines draw") == 0){
                 draw_has_been_offered = false;
                 scoreboard_DrawDeclined();
+                continue;
             }
             else if(strcmp(result, "GAME ABORTED") == 0){
                 // TODO, scoreboard should display game aborted!
@@ -1239,6 +1258,8 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 char aborted_signal[20] = "Game Aborted!";
                 scoreboard_SetLine(3);
                 send_string(aborted_signal);
+                GAME_ID[0] = '\0';
+                resigned_game = false;
                 break;
             }
             else{
@@ -1256,8 +1277,8 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             printf("Official last move: %s\n", get_last_move_played_by_opponent());
             printf("White has %lu time\n", white_time);
             printf("Black has %lu time\n", black_time);            
-            // GraphicLCD_DispClock(white_time, true);
-            // GraphicLCD_DispClock(black_time, false);
+            GraphicLCD_DispClock(white_time, true);
+            GraphicLCD_DispClock(black_time, false);
             if (strlen(get_last_move_played_by_opponent()) >= 4){
                 white_turn = white_turn ^ 1;
                 black_turn = black_turn ^ 1;
@@ -1274,9 +1295,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 }
                 printf("Black turn to move\n");
             }
-            // if(getMakeMove() == true){
-            //     printf("Already polling!\n");
-            // }
             if ((white_turn && (strcmp(getColor(), "white") == 0)) || 
                 (black_turn && (strcmp(getColor(), "black") == 0))) {
                 // Opponent move
@@ -1289,7 +1307,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
 
                 // Move piece
                 xyp_play_move(&sequence);
-                resetMakeMove();
                 vTaskDelay(pdMS_TO_TICKS(50));
             }
             board_state_print();
@@ -1320,7 +1337,6 @@ void lichess_api_handle_draw_helper(void *pvParameters){
 }
 
 void lichess_api_make_move_helper(void *pvParameters){
-    printf("Starting make move helper\n");
     for(;;){
         xSemaphoreTake(xSemaphore_MakeMove, portMAX_DELAY);
         printf("Inside make move helper!\n");
