@@ -245,6 +245,7 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
     cJSON *root = cJSON_Parse(json);
     if(root == NULL){
         printf("{set_last_move_played_by_opponent} ERROR PARSING JSON\n");
+        *is_move_played = false;
         return;
     }
     cJSON *type = cJSON_GetObjectItem(root, "type");
@@ -258,7 +259,8 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
     }
     else{
         printf("{set_last_move_played_by_opponent} Type isn't gameState of gameFull\n");
-        cJSON_Delete(root);    
+        cJSON_Delete(root);
+        *is_move_played = false;
         return;
     }
     char* full_moves = moves->valuestring;
@@ -304,6 +306,7 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
             }   
             else{
                 printf("{handle_promotion}. Didn't find qrnb, found %c instead\n", piece_to_promote_to);
+                *is_move_played = false;
                 return;
             }
             printf("%s | %d\n", promotion_sentence, strlen(promotion_sentence));
@@ -752,10 +755,8 @@ void lichess_api_create_game(bool rated) {
         }
         char URL[100] = "https://lichess.org/api/challenge/";
         strcat(URL, specific_opponent);
-        printf("test 1\n");
         URL[strlen(URL)] = 0;
         char full_params[100] = {};
-        printf("test 2\n");
         esp_http_client_config_t config_create_game_specific = {
                 .url = "https://lichess.org/api/board/seek",
                 .path = "/get",
@@ -764,7 +765,6 @@ void lichess_api_create_game(bool rated) {
                 .user_data = response_buf
         };
         esp_http_client_handle_t client_create_game_specific = esp_http_client_init(&config_create_game_specific); 
-        printf("test 3\n");
         if (!logged_in) {
             printf("Can't create game. Login not detected\n");
             return;
@@ -774,7 +774,6 @@ void lichess_api_create_game(bool rated) {
             printf("Clock time has to be > 0!");
             return;
         }
-        printf("test 4\n");
         rated ? strcat(full_params, "rated=true&") : strcat(full_params, "rated=false&");
         char fullMin[100] = "clock.limit=";
 
@@ -782,7 +781,6 @@ void lichess_api_create_game(bool rated) {
         char min_as_string[min_size+1];
         sprintf(min_as_string, "%d", clock_time);
         strcat(fullMin, min_as_string);
-        printf("test 5\n");
 
         strcat(fullMin, "&clock.increment=");   
         int increment_size = 100;
@@ -1326,6 +1324,20 @@ void lichess_api_make_move_helper(void *pvParameters){
     for(;;){
         xSemaphoreTake(xSemaphore_MakeMove, portMAX_DELAY);
         printf("Inside make move helper!\n");
+
+        // no game active, return
+        if(strlen(GAME_ID) == 0){
+            printf("Game isn't active. Can't make a move!\n");
+            return;
+        }
+
+        // opponent's move, return
+        if ((black_turn && (strcmp(getColor(), "white") == 0)) || 
+            (white_turn && (strcmp(getColor(), "black") == 0))) {
+            printf("Currently opponent's move, no polling to be done\n");
+            return;
+        }
+
         char move[8] = {};
         if (!poll_board(board_state_get_current_board_state(), move)) {
             scoreboard_clearline(3);
