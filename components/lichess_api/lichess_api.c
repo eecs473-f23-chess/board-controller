@@ -156,12 +156,14 @@ void set_username(const char *json_str){
         country[0] = 'N';
         country[1] = '/';
         country[2] = 'A';
+        country[3] = 0;
     }
     cJSON *country_node = cJSON_GetObjectItem(profile, "flag");
     if(country_node == NULL){
         country[0] = 'N';
         country[1] = '/';
         country[2] = 'A';
+        country[3] = 0;
     }
     else{
         for(int i = 0; i < strlen(country_node->valuestring); i++){
@@ -725,6 +727,7 @@ void lichess_api_stream_event() {
 
     opponent_country[0] = 'U';
     opponent_country[1] = 'S';
+    opponent_country[2] = 0;
     printf("Opponent username: %s\n", opponent_username);
     printf("Opponent rating: %s\n", opponent_rating);
     printf("Opponent country %s\n", opponent_country);
