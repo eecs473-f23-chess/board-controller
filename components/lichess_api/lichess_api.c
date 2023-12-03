@@ -42,6 +42,7 @@ static bool logged_in;
 static bool move_update = false;
 static bool want_moves = false;
 static bool draw_has_been_offered = false;
+static bool poll_board_move = false;
 static board_state_t user_board_state;
 uint32_t white_time = -1;
 uint32_t black_time = -1;
@@ -611,10 +612,12 @@ void lichess_api_make_move(char* user_move) {
     // TODO, remove this comment after
     
     if (!logged_in) {
+        poll_board_move = false;
         return;
     }
 
     if(strlen(GAME_ID) == 0){
+        poll_board_move = false;
         printf("Game isn't active. Can't make a move!");
         return;
     }
@@ -647,6 +650,7 @@ void lichess_api_make_move(char* user_move) {
                 esp_http_client_get_status_code(client_make_move),
                 esp_http_client_get_content_length(client_make_move));
     } else {
+        poll_board_move = false;
         ESP_LOGE(TAG, "Lichess_make_a_move request failed: %s", esp_err_to_name(err));
     }
     if (esp_http_client_get_status_code(client_make_move) != 200){
@@ -655,6 +659,7 @@ void lichess_api_make_move(char* user_move) {
             scoreboard_SetLine(3);
             char illegal[20] = "Bad move, try again";
             send_string(illegal);
+            poll_board_move = false;
     }
     else{
         printf("%s successfully made {lichess_post_move}\n", user_move);
@@ -1282,9 +1287,9 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 }
                 printf("Black turn to move\n");
             }
-            if ((white_turn && (strcmp(getColor(), "white") == 0)) || 
-                (black_turn && (strcmp(getColor(), "black") == 0))) {
+            if (!poll_board_move) {
                 // Opponent move
+                printf("Moving with XY Plotter | NOT poll_board_move print\n");
                 move_type_t move_type;
                 board_state_update_board_based_on_opponent_move(get_last_move_played_by_opponent(), &move_type);
 
@@ -1296,6 +1301,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 xyp_play_move(&sequence);
                 vTaskDelay(pdMS_TO_TICKS(50));
             }
+            poll_board_move = false;
             board_state_print();
         }
     }
@@ -1352,6 +1358,7 @@ void lichess_api_make_move_helper(void *pvParameters){
             printf("Legal move is %s\n", move);
             board_state_print();
             lichess_api_set_user_board_state(board_state_get_current_board_state());
+            poll_board_move = true;
             lichess_api_make_move(move);
         }
     }
