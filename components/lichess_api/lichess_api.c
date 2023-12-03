@@ -1174,7 +1174,8 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
     esp_http_client_fetch_headers(client_stream);
     want_moves = true;
     xSemaphoreGive(xSemaphore_DataTransfer);
-
+    int moves_made = 0;
+    TaskHandle_t xDecrementTimeHandle = NULL;
     // This while loop exists as long as the game is in progress (Streaming moves)
     while(game_created){ 
         if(!wifi_is_connected()){
@@ -1280,6 +1281,14 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 printf("No move played, continuing\n");
                 continue;
             }
+            if (moves_made < 2){
+                moves_made += 1;
+            }
+            
+            if (moves_made == 2) {
+                xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, &xDecrementTimeHandle);
+                moves_made += 1;
+            }
             set_clock_time(stream_data);
             printf("Official last move: %s\n", get_last_move_played_by_opponent());
             printf("White has %lu time\n", white_time);
@@ -1325,8 +1334,11 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             board_state_print();
         }
     }
-
     printf("Exiting stream move of game\n");
+    if (xDecrementTimeHandle != NULL){
+        printf("Deleting decrement task since game has ended.");
+        vTaskDelete(xDecrementTimeHandle);
+    }
     white_time = 0;
     black_time = 0;
     esp_http_client_cleanup(client_stream);    

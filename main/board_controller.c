@@ -51,5 +51,5 @@ void app_main(void)
         xTaskCreate(&lichess_api_resign_game_helper, "Resign the current lichess game", 4096, NULL, 4, NULL);
         xTaskCreate(&lichess_api_handle_draw_helper, "Draw request current lichess game", 4096, NULL, 4, NULL);
         xTaskCreate(&lichess_api_make_move_helper, "Make a move for lichess game", 4096, NULL, 4, NULL);
-        xTaskCreate(&decrement_time, "Decrement clock time", 2048, NULL, 1, NULL);
+        
 }
