@@ -227,7 +227,15 @@ void GraphicLCD_DispClock(int ms, bool left)
 
 void decrement_time(void * pvParameters){
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  while(1){
+  while(1) {
+    // Don't let time decrement to negative
+    if (white_time < 1000) {
+      white_time = 0;
+    }
+    if (black_time < 1000) {
+      black_time = 0;
+    }
+
     if(white_turn && white_time != 0){
       white_time -= 1000;
       GraphicLCD_DispClock(white_time, false);

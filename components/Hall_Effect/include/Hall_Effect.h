@@ -11,7 +11,7 @@
 #include "types.h"
 #include "board_state.h"
 
-#define POSITIVE 1200
+#define POSITIVE 1100
 #define NEGATIVE 875
 
 int Get_Magnetic();

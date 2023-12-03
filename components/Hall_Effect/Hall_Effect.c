@@ -181,7 +181,6 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
             if(reading < NEGATIVE){ // If Black
                 if(board_state->board[i][j] == WK || board_state->board[i][j] == WQ || board_state->board[i][j] == WN ||
                     board_state->board[i][j] == WB || board_state->board[i][j] == WR || board_state->board[i][j] == WP || board_state->board[i][j] == NP){
-                    printf("deteched black piece change\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
@@ -193,7 +192,6 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
             else if(reading > POSITIVE){ //If white
                 if(board_state->board[i][j] == BK || board_state->board[i][j] == BQ || board_state->board[i][j] == BN ||
                     board_state->board[i][j] == BB || board_state->board[i][j] == BRK || board_state->board[i][j] == BP || board_state->board[i][j] == NP){
-                    printf("detected white piece change\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
@@ -204,7 +202,6 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
             }
             else{
                 if(board_state->board[i][j] != NP){
-                    printf("change from no piece\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
