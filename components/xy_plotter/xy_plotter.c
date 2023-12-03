@@ -548,7 +548,11 @@ void xyp_play_move(struct move_sequence* sequence) {
     for (uint8_t i = 0; i < sequence->num_moves; ++i) {
         printf("Moving to X: %f, Y: %f, EM: %d\n", sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord, sequence->squares_to_move[i].target_emag_status);
         electromagnet_set(sequence->squares_to_move[i].target_emag_status);
-        xyp_set_board_pos(sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord);
+        if(sequence->squares_to_move[i].target_emag_status == NONE) {
+            xyp_set_board_pos(sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord);
+        } else {
+            xyp_set_board_pos(sequence->squares_to_move[i].target_x_cord + 0.2, sequence->squares_to_move[i].target_y_cord + 0.2);
+        }
     }
 
     electromagnet_off();
