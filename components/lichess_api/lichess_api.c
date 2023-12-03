@@ -421,6 +421,12 @@ void check_result_of_game(char *json, char* const res){
             strcpy(res, game_status);
             return;
         }
+
+        if (strcmp(game_status, "draw") == 0){
+            cJSON_Delete(root);
+            strcpy(res, game_status);
+            return;
+        }
     }
     else if(strcmp(type->valuestring, "chatLine") == 0){
         cJSON* text = cJSON_GetObjectItem(root, "text");
@@ -1220,7 +1226,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             if(strcmp(result, "GAME IN PROGRESS") == 0){
                 printf("Game in progress\n");
             }
-            else if(strcmp(result, "1/2 - 1/2. Game drawn") == 0){
+            else if(strcmp(result, "1/2 - 1/2. Game drawn") == 0 || strcmp(result, "Draw offer accepted") == 0){
                 want_moves = false;
                 char p1[5] = "1/2";
                 char p2[5] = "1/2";
