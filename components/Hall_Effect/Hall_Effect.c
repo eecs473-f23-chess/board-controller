@@ -173,7 +173,7 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
     int reading;
     printf("--------------------------------------------\n");
     for(int i = 0; i < 8; ++i){
-        if (index == 5) {
+        if (index >= 5) {
             printf("Found more changes than possible, exiting\n");
             return false;
         }

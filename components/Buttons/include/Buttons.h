@@ -19,7 +19,4 @@ void IRAM_ATTR resign_button(void * arg);
 void IRAM_ATTR make_game_button(void * arg);
 void IRAM_ATTR clock_button(void * arg);
 
-bool getMakeMove();
-void resetMakeMove();
-
 #endif

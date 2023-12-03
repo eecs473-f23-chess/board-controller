@@ -18,13 +18,13 @@ void buttons_init(){
     // gpio_config(&io_conf);
     // io_conf.pin_bit_mask = 3;
     // gpio_config(&io_conf);   
-    gpio_install_isr_service(ESP_INTR_FLAG_LEVEL3);
-    gpio_isr_handler_add(8, resign_button, (void*) 0);
-    gpio_isr_handler_add(18, draw_button, (void*) 0);
-    gpio_isr_handler_add(19, make_game_button, (void*) 0);
-    // 1 is making game as black
-    gpio_isr_handler_add(20, make_game_button, (void*) 1);
-    gpio_isr_handler_add(3, clock_button, (void*) 0);
+    // gpio_install_isr_service(ESP_INTR_FLAG_LEVEL3);
+    // gpio_isr_handler_add(8, resign_button, (void*) 0);
+    // gpio_isr_handler_add(18, draw_button, (void*) 0);
+    // gpio_isr_handler_add(19, make_game_button, (void*) 0);
+    // // 1 is making game as black
+    // gpio_isr_handler_add(20, make_game_button, (void*) 1);
+    // gpio_isr_handler_add(3, clock_button, (void*) 0);
     printf("Button init finished\n");
 }
 
@@ -37,24 +37,9 @@ void resign_button(void * arg){
 }
 
 void make_game_button(void * arg){
-    if(game_created == false){
-        game_created = true;
-        xSemaphoreGiveFromISR(xSemaphore, NULL);
-    }    
+    xSemaphoreGiveFromISR(xSemaphore, NULL);
 }
 
 void clock_button(void * arg){
-    if (make_move == false) {
-        make_move = true;
-        xSemaphoreGiveFromISR(xSemaphore_MakeMove, NULL);
-    }
-    
-}
-
-bool getMakeMove(){
-    return make_move;
-}
-
-void resetMakeMove(){
-    make_move = false;
+    xSemaphoreGiveFromISR(xSemaphore_MakeMove, NULL);    
 }

@@ -431,7 +431,8 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
     int dest_x = map_x_to_board_state(goal_x_cord, goal_y_cord);
     int dest_y = map_y_to_board_state(goal_x_cord, goal_y_cord);
     int goal_square_status = board_state_get_piece_on_square(board_state, dest_x, dest_y);
-    printf("DEST: %d %d", dest_x, dest_y);
+    board_state_print();
+    printf("DEST: %d %d\n", dest_x, dest_y);
     // if there is soemthing on target square, campture has taken place
     if(goal_square_status != NP) {  
         printf("PIECE CAPTURE\n");

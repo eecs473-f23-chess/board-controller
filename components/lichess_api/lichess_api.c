@@ -44,8 +44,9 @@ static bool want_moves = false;
 static bool draw_has_been_offered = false;
 static bool poll_board_move = false;
 static board_state_t user_board_state;
-uint32_t white_time = -1;
-uint32_t black_time = -1;
+uint32_t white_time = 0;
+uint32_t black_time = 0;
+uint32_t starting_time = 0;
 static char opponent_username[100] = {};
 static char opponent_rating[5] = {};
 static char opponent_country[5] = {};
@@ -278,6 +279,7 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
             for(int i = n-5; i < n; i++){
                 last_move_played_by_opponent[i-n+5] = full_moves[i];
             }
+            last_move_played_by_opponent[5] = 0;
 
             char piece_to_promote_to = last_move_played_by_opponent[4];
             char destination_square[3] = {};
@@ -313,6 +315,7 @@ void set_last_move_played_by_opponent(char* json, bool* is_move_played){
             for(int i = n-4; i < n; i++){
                 last_move_played_by_opponent[i-n+4] = full_moves[i];
             }
+            last_move_played_by_opponent[4] = 0;
         }
         *is_move_played = true;
     }
@@ -411,6 +414,12 @@ void check_result_of_game(char *json, char* const res){
                 strcpy(res, white_resigned);
                 return;
             }
+        }
+
+        if (strcmp(game_status, "started") == 0){
+            cJSON_Delete(root);
+            strcpy(res, game_status);
+            return;
         }
     }
     else if(strcmp(type->valuestring, "chatLine") == 0){
@@ -720,30 +729,37 @@ void lichess_api_stream_event() {
     else{
         scoreboard_Chess_Setup(opponent_username, user_name, opponent_country, country, opponent_rating, rating);
     }
+
+    scoreboard_SetLine(3);
     
     printf("GAME ID: %s\n", GAME_ID);
     game_created = true;
     printf("Game created boolean is true\n");
     xSemaphoreGive(xSemaphore_API);
     esp_http_client_cleanup(client_stream);
+    printf("setting white and black time to %lu\n", starting_time);
+    GraphicLCD_DispClock(starting_time, false);
+    GraphicLCD_DispClock(starting_time, true);
     lichess_api_stream_move_of_game(NULL);
 }
 
 
 void lichess_api_create_game(bool rated) {
-    // https://lichess.org/api/board/seek 
-    // xSemaphoreTake(xSemaphore_API, portMAX_DELAY);
-
     // If we aren't logged in, set game_created 
     if (!logged_in) {
         printf("Can't create game. Login not detected\n");
-        game_created = false;
         return;
     }
     if (!wifi_is_connected()){
         printf("Wifi Disconnected! Exiting now\n");
-        game_created = false;
+        return;
     }
+
+    if (game_created == true) {
+        printf("Game already in progress, can't make another one\n");
+        return;
+    }
+
     board_state_init();
     board_state_print();
     white_turn = true;
@@ -785,6 +801,8 @@ void lichess_api_create_game(bool rated) {
         game_created = false;
         return;
     }
+
+    starting_time = minutes * 60 * 1000;
 
     if (opponent_type == OPPONENT_SPECIFIC){
         int clock_time = minutes * 60;
@@ -1126,7 +1144,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
         return;
     }
 
-    if(strlen(GAME_ID) == 0){
+    if(strlen(GAME_ID) == 0) {
         printf("ERROR, GAME ID NOT DETECTED\n");
         game_created = false;
         return;
@@ -1158,7 +1176,7 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
     xSemaphoreGive(xSemaphore_DataTransfer);
 
     // This while loop exists as long as the game is in progress (Streaming moves)
-    while(1){ 
+    while(game_created){ 
         if(!wifi_is_connected()){
             ESP_LOGE(TAG, "WIFI DISCONNECTED");
             break;
@@ -1210,7 +1228,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 printf("Game Ended: %s\n", result);
                 GAME_ID[0] = '\0';
                 game_created = false;
-                break;
             }
             else if(strcmp(result, "0-1 (Black wins)") == 0){
                 want_moves = false;                    
@@ -1221,7 +1238,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 printf("Game Ended: Black wins. 0-1\n");
                 GAME_ID[0] = '\0';
                 game_created = false;
-                break;
             }
             else if(strcmp(result, "1-0 (White wins)") == 0){
                 want_moves = false;
@@ -1232,7 +1248,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 GAME_ID[0] = '\0';
                 printf("Game Ended: White wins. 1-0\n");
                 game_created = false;
-                break;
             }
             else if(strcmp(result, "Black declines draw") == 0){
                 draw_has_been_offered = false;
@@ -1269,8 +1284,8 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
             printf("Official last move: %s\n", get_last_move_played_by_opponent());
             printf("White has %lu time\n", white_time);
             printf("Black has %lu time\n", black_time);            
-            GraphicLCD_DispClock(white_time, true);
-            GraphicLCD_DispClock(black_time, false);
+            GraphicLCD_DispClock(white_time, false);
+            GraphicLCD_DispClock(black_time, true);
             if (strlen(get_last_move_played_by_opponent()) >= 4){
                 white_turn = white_turn ^ 1;
                 black_turn = black_turn ^ 1;
@@ -1301,10 +1316,16 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 xyp_play_move(&sequence);
                 vTaskDelay(pdMS_TO_TICKS(50));
             }
+
+            lichess_api_set_user_board_state(board_state_get_current_board_state());
             poll_board_move = false;
             board_state_print();
         }
     }
+
+    printf("Exiting stream move of game\n");
+    white_time = 0;
+    black_time = 0;
     esp_http_client_cleanup(client_stream);    
 }
 
@@ -1337,14 +1358,14 @@ void lichess_api_make_move_helper(void *pvParameters){
         // no game active, return
         if(strlen(GAME_ID) == 0){
             printf("Game isn't active. Can't make a move!\n");
-            return;
+            continue;
         }
 
         // opponent's move, return
         if ((black_turn && (strcmp(getColor(), "white") == 0)) || 
             (white_turn && (strcmp(getColor(), "black") == 0))) {
             printf("Currently opponent's move, no polling to be done\n");
-            return;
+            continue;
         }
 
         char move[8] = {};
@@ -1357,7 +1378,6 @@ void lichess_api_make_move_helper(void *pvParameters){
         else {
             printf("Legal move is %s\n", move);
             board_state_print();
-            lichess_api_set_user_board_state(board_state_get_current_board_state());
             poll_board_move = true;
             lichess_api_make_move(move);
         }
