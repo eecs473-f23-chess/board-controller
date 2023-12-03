@@ -42,7 +42,6 @@ static bool logged_in;
 static bool move_update = false;
 static bool want_moves = false;
 static bool draw_has_been_offered = false;
-static bool resigned_game = false;
 static board_state_t user_board_state;
 uint32_t white_time = -1;
 uint32_t black_time = -1;
@@ -1067,49 +1066,41 @@ void lichess_api_resign_game(){
         printf("NO GAME ID DETECTED. Can't resign!");
         return;
     }
-    if(resigned_game == false){
-        resigned_game = true;
 
-        esp_http_client_config_t config_resign = {
-            .url = "https://lichess.org/api/",
-            .path = "/get",
-            .transport_type = HTTP_TRANSPORT_OVER_TCP,
-            .event_handler = _http_event_handler,
-            .user_data = response_buf,
-        };
-        esp_http_client_handle_t client_resign = esp_http_client_init(&config_resign);  
-        const char* TAG = "LICHESS_RESIGN_GAME";
+    esp_http_client_config_t config_resign = {
+        .url = "https://lichess.org/api/",
+        .path = "/get",
+        .transport_type = HTTP_TRANSPORT_OVER_TCP,
+        .event_handler = _http_event_handler,
+        .user_data = response_buf,
+    };
+    esp_http_client_handle_t client_resign = esp_http_client_init(&config_resign);  
+    const char* TAG = "LICHESS_RESIGN_GAME";
 
-        char URL[100] = "https://lichess.org/api/board/game/";
-        strncat(URL, GAME_ID, strlen(GAME_ID));
-        char last[10] = "/resign";
-        strncat(URL, last, strlen(last));
+    char URL[100] = "https://lichess.org/api/board/game/";
+    strncat(URL, GAME_ID, strlen(GAME_ID));
+    char last[10] = "/resign";
+    strncat(URL, last, strlen(last));
 
-        xSemaphoreTake(xSemaphore_DataTransfer, portMAX_DELAY);
-        esp_http_client_set_url(client_resign, URL);
-        esp_http_client_set_method(client_resign, HTTP_METHOD_POST); 
-        esp_http_client_set_header(client_resign, "Authorization", bearer_token);
-        esp_http_client_set_header(client_resign, "Content-Type", "text/plain");
-        esp_err_t err = esp_http_client_perform(client_resign);
-        if (err == ESP_OK) {
-            printf("Successfully resigned the game!\n");
-            ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
-                    esp_http_client_get_status_code(client_resign),
-                    esp_http_client_get_content_length(client_resign));
-        } else {
-            ESP_LOGE(TAG, "Lichess_resign_game request failed: %s", esp_err_to_name(err));
-            resigned_game = false;
-        }
-        if (esp_http_client_get_status_code(client_resign) != 200){
-            printf("{resign game} return code wasn't 200. Some error happend!\n");
-            resigned_game = false;
-        }
-        esp_http_client_cleanup(client_resign);
-        xSemaphoreGive(xSemaphore_DataTransfer);
+    xSemaphoreTake(xSemaphore_DataTransfer, portMAX_DELAY);
+    esp_http_client_set_url(client_resign, URL);
+    esp_http_client_set_method(client_resign, HTTP_METHOD_POST); 
+    esp_http_client_set_header(client_resign, "Authorization", bearer_token);
+    esp_http_client_set_header(client_resign, "Content-Type", "text/plain");
+    esp_err_t err = esp_http_client_perform(client_resign);
+    if (err == ESP_OK) {
+        printf("Successfully resigned the game!\n");
+        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRId64,
+                esp_http_client_get_status_code(client_resign),
+                esp_http_client_get_content_length(client_resign));
+    } else {
+        ESP_LOGE(TAG, "Lichess_resign_game request failed: %s", esp_err_to_name(err));
     }
-    else{
-        printf("Game already resigned\n");
+    if (esp_http_client_get_status_code(client_resign) != 200){
+        printf("{resign game} return code wasn't 200. Some error happend!\n");
     }
+    esp_http_client_cleanup(client_resign);
+    xSemaphoreGive(xSemaphore_DataTransfer);
 }
 
 void lichess_api_set_user_board_state(board_state_t* state){
@@ -1214,7 +1205,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 printf("Game Ended: %s\n", result);
                 GAME_ID[0] = '\0';
                 game_created = false;
-                resigned_game = false;
                 break;
             }
             else if(strcmp(result, "0-1 (Black wins)") == 0){
@@ -1226,7 +1216,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 printf("Game Ended: Black wins. 0-1\n");
                 GAME_ID[0] = '\0';
                 game_created = false;
-                resigned_game = false;
                 break;
             }
             else if(strcmp(result, "1-0 (White wins)") == 0){
@@ -1238,7 +1227,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 GAME_ID[0] = '\0';
                 printf("Game Ended: White wins. 1-0\n");
                 game_created = false;
-                resigned_game = false;
                 break;
             }
             else if(strcmp(result, "Black declines draw") == 0){
@@ -1259,7 +1247,6 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 scoreboard_SetLine(3);
                 send_string(aborted_signal);
                 GAME_ID[0] = '\0';
-                resigned_game = false;
                 break;
             }
             else{
