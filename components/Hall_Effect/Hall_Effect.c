@@ -222,8 +222,7 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
         printf("\n");
     }
     compare(cur_board, move_made, index);
-    move_type_t user_move_type;
-    return board_state_update_board_based_on_opponent_move(move_made, &user_move_type);
+    return true;
 }
 
 void map_array_coordinate_to_chess_square(int x, int y, char* move){

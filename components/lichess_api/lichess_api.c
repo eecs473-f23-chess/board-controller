@@ -1302,11 +1302,14 @@ void lichess_api_stream_move_of_game(void *pvParameters) {
                 }
                 printf("Black turn to move\n");
             }
+
+            // Update board state
+            move_type_t move_type;
+            board_state_update_board_based_on_opponent_move(get_last_move_played_by_opponent(), &move_type);
+
             if (!poll_board_move) {
                 // Opponent move
                 printf("Moving with XY Plotter | NOT poll_board_move print\n");
-                move_type_t move_type;
-                board_state_update_board_based_on_opponent_move(get_last_move_played_by_opponent(), &move_type);
 
                 // Get XY plotter moves to make
                 struct move_sequence sequence;
