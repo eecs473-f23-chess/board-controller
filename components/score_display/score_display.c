@@ -319,6 +319,7 @@ void scoreboard_OfferDraw(bool LtR){
 }
 
 void scoreboard_DrawDeclined(){
+  scoreboard_clearline(3);
   scoreboard_command(0x5B+0x80);
   send_string("     ");
 }

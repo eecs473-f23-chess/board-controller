@@ -202,6 +202,8 @@ void GraphicLCD_init_LCD()
   GraphicLCD_comm_write(0xAF, false); // Display ON
   GraphicLCD_ClearLCD(true);
   GraphicLCD_ClearLCD(false);
+  GraphicLCD_DispClock(0, true);
+  GraphicLCD_DispClock(0, false);
 }
 
 void GraphicLCD_DispClock(int ms, bool left)
@@ -226,13 +228,13 @@ void GraphicLCD_DispClock(int ms, bool left)
 void decrement_time(void * pvParameters){
   TickType_t xLastWakeTime = xTaskGetTickCount();
   while(1){
-    if(white_turn && white_time != -1){
+    if(white_turn && white_time != 0){
       white_time -= 1000;
-      GraphicLCD_DispClock(white_time, true);
+      GraphicLCD_DispClock(white_time, false);
     }
-    else if(black_turn && black_time != -1){
+    else if(black_turn && black_time != 0){
       black_time -= 1000;
-      GraphicLCD_DispClock(black_time, false);
+      GraphicLCD_DispClock(black_time, true);
     }
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
   }

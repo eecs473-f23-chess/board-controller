@@ -151,6 +151,13 @@ static void mobile_app_ble_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t ga
             break;
         case ESP_GATTC_CLOSE_EVT:
             ESP_LOGI(TAG, "ESP_GATTC_CLOSE_EVT");
+
+            // Start advertising again
+            esp_err_t ret = esp_ble_gap_start_advertising(&ble_adv_params);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed starting advertising: %s", esp_err_to_name(ret));
+                exit(1);
+            }
             break;
         case ESP_GATTC_CFG_MTU_EVT:
             ESP_LOGI(TAG, "ESP_GATTC_CFG_MTU_EVT");
