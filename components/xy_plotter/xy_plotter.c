@@ -446,9 +446,9 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
         
         // move captured piece to side of board
         if(goal_x_cord < 4.5) {
-            add_target_square(sequence, 0.5, get_half_y_step(goal_y_cord), capture_piece_color);
+            add_target_square(sequence, 0.25, get_half_y_step(goal_y_cord), capture_piece_color);
         } else {
-            add_target_square(sequence, 8.5, get_half_y_step(goal_y_cord), capture_piece_color);
+            add_target_square(sequence, 8.75, get_half_y_step(goal_y_cord), capture_piece_color);
         }
     }
 
@@ -479,9 +479,9 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
 
         // move captured pawn off to side of board
         if(goal_x_cord < 4.5) {
-            add_target_square(sequence, 0.5, get_half_y_step(prev_y_cord), captured_pawn_color);
+            add_target_square(sequence, 0.25, get_half_y_step(prev_y_cord), captured_pawn_color);
         } else {
-            add_target_square(sequence, 8.5, get_half_y_step(prev_y_cord), captured_pawn_color);
+            add_target_square(sequence, 8.75, get_half_y_step(prev_y_cord), captured_pawn_color);
         }
 
         return;
@@ -549,11 +549,7 @@ void xyp_play_move(struct move_sequence* sequence) {
     for (uint8_t i = 0; i < sequence->num_moves; ++i) {
         printf("Moving to X: %f, Y: %f, EM: %d\n", sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord, sequence->squares_to_move[i].target_emag_status);
         electromagnet_set(sequence->squares_to_move[i].target_emag_status);
-        if(sequence->squares_to_move[i].target_emag_status == NONE) {
-            xyp_set_board_pos(sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord);
-        } else {
-            xyp_set_board_pos(sequence->squares_to_move[i].target_x_cord + 0.2, sequence->squares_to_move[i].target_y_cord + 0.2);
-        }
+        xyp_set_board_pos(sequence->squares_to_move[i].target_x_cord, sequence->squares_to_move[i].target_y_cord);
     }
 
     electromagnet_off();
