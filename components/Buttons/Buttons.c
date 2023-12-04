@@ -12,12 +12,7 @@ void buttons_init(){
     io_conf.pull_up_en = 1;
     io_conf.pin_bit_mask = 1835272;
     gpio_config(&io_conf);
-    // io_conf.pin_bit_mask = 19;
-    // gpio_config(&io_conf);
-    // io_conf.pin_bit_mask = 20;
-    // gpio_config(&io_conf);
-    // io_conf.pin_bit_mask = 3;
-    // gpio_config(&io_conf);   
+
     // gpio_install_isr_service(ESP_INTR_FLAG_LEVEL3);
     // gpio_isr_handler_add(8, resign_button, (void*) 0);
     // gpio_isr_handler_add(18, draw_button, (void*) 0);

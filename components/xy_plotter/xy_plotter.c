@@ -446,9 +446,9 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
         
         // move captured piece to side of board
         if(goal_x_cord < 4.5) {
-            add_target_square(sequence, 0.25, get_half_y_step(goal_y_cord), capture_piece_color);
+            add_target_square(sequence, 0.50, get_half_y_step(goal_y_cord), capture_piece_color);
         } else {
-            add_target_square(sequence, 8.75, get_half_y_step(goal_y_cord), capture_piece_color);
+            add_target_square(sequence, 8.50, get_half_y_step(goal_y_cord), capture_piece_color);
         }
     }
 
@@ -479,9 +479,9 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
 
         // move captured pawn off to side of board
         if(goal_x_cord < 4.5) {
-            add_target_square(sequence, 0.25, get_half_y_step(prev_y_cord), captured_pawn_color);
+            add_target_square(sequence, 0.50, get_half_y_step(prev_y_cord), captured_pawn_color);
         } else {
-            add_target_square(sequence, 8.75, get_half_y_step(prev_y_cord), captured_pawn_color);
+            add_target_square(sequence, 8.50, get_half_y_step(prev_y_cord), captured_pawn_color);
         }
 
         return;
