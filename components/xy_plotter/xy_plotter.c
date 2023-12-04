@@ -431,7 +431,8 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
     int dest_x = map_x_to_board_state(goal_x_cord, goal_y_cord);
     int dest_y = map_y_to_board_state(goal_x_cord, goal_y_cord);
     int goal_square_status = board_state_get_piece_on_square(board_state, dest_x, dest_y);
-    printf("DEST: %d %d", dest_x, dest_y);
+    board_state_print();
+    printf("DEST: %d %d\n", dest_x, dest_y);
     // if there is soemthing on target square, campture has taken place
     if(goal_square_status != NP) {  
         printf("PIECE CAPTURE\n");
@@ -445,9 +446,9 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
         
         // move captured piece to side of board
         if(goal_x_cord < 4.5) {
-            add_target_square(sequence, 0.5, get_half_y_step(goal_y_cord), capture_piece_color);
+            add_target_square(sequence, 0.50, get_half_y_step(goal_y_cord), capture_piece_color);
         } else {
-            add_target_square(sequence, 8.5, get_half_y_step(goal_y_cord), capture_piece_color);
+            add_target_square(sequence, 8.50, get_half_y_step(goal_y_cord), capture_piece_color);
         }
     }
 
@@ -478,9 +479,9 @@ void xyp_generate_moves(struct move_sequence * sequence, board_state_t* board_st
 
         // move captured pawn off to side of board
         if(goal_x_cord < 4.5) {
-            add_target_square(sequence, 0.5, get_half_y_step(prev_y_cord), captured_pawn_color);
+            add_target_square(sequence, 0.50, get_half_y_step(prev_y_cord), captured_pawn_color);
         } else {
-            add_target_square(sequence, 8.5, get_half_y_step(prev_y_cord), captured_pawn_color);
+            add_target_square(sequence, 8.50, get_half_y_step(prev_y_cord), captured_pawn_color);
         }
 
         return;

@@ -100,30 +100,21 @@ void wifi_set_pw(const char* pw_buf, const uint16_t pw_len) {
         ESP_LOGW(TAG, "Wifi pw too long");
         return;
     }
-    char *temp = "sefk6040";
-    for(int i = 0; i < strlen(temp); i++){
-        pw[i] = temp[i];
-    }
-    printf("Password %s\n", pw);
-    // memcpy(pw, pw_buf, pw_len);
-    // pw[pw_len] = 0;
+    memcpy(pw, pw_buf, pw_len);
+    pw[pw_len] = 0;
 }
 
 bool wifi_connect() {
     const char* TAG = "CONNECT_WIFI";
-
     wifi_event_group = xEventGroupCreate();
-
     wifi_config_t wifi_config;
     memset(&wifi_config, 0, sizeof(wifi_config));
     strcpy((char*)wifi_config.sta.ssid, ssid);
     strcpy((char*)wifi_config.sta.password, pw);
-
     esp_wifi_stop();
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
-
     ESP_LOGI(TAG, "wifi_init_sta finished");
 
     // Blocks until wifi status received

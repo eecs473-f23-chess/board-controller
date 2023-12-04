@@ -173,12 +173,7 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
     int reading;
     printf("--------------------------------------------\n");
     for(int i = 0; i < 8; ++i){
-        if (index == 5) {
-            printf("Found more changes than possible, exiting\n");
-            return false;
-        }
         for(int j = 0; j < 8; ++j){
-            printf("%d %d ", i, j);
             select_xy_sensor(i, j);
             vTaskDelay(pdMS_TO_TICKS(50));
             reading = Get_Magnetic();
@@ -186,7 +181,6 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
             if(reading < NEGATIVE){ // If Black
                 if(board_state->board[i][j] == WK || board_state->board[i][j] == WQ || board_state->board[i][j] == WN ||
                     board_state->board[i][j] == WB || board_state->board[i][j] == WR || board_state->board[i][j] == WP || board_state->board[i][j] == NP){
-                    printf("deteched black piece change\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
@@ -198,7 +192,6 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
             else if(reading > POSITIVE){ //If white
                 if(board_state->board[i][j] == BK || board_state->board[i][j] == BQ || board_state->board[i][j] == BN ||
                     board_state->board[i][j] == BB || board_state->board[i][j] == BRK || board_state->board[i][j] == BP || board_state->board[i][j] == NP){
-                    printf("detected white piece change\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
@@ -209,7 +202,6 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
             }
             else{
                 if(board_state->board[i][j] != NP){
-                    printf("change from no piece\n");
                     struct coordinate change;
                     change.x = i;
                     change.y = j;
@@ -221,9 +213,17 @@ bool poll_board(board_state_t* board_state, char * move_made){ // Polls the enti
         }
         printf("\n");
     }
+
+    printf("Found changes on the following squares:\n");
+    for (int i = 0; i < index; ++i) {
+        printf("\tX: %d, Y: %d\n", changes[i].x, changes[i].y);
+    }
+    if (index >= 5) {
+        printf("Found more changes than possible, exiting\n");
+        return false;
+    }
     compare(cur_board, move_made, index);
-    move_type_t user_move_type;
-    return board_state_update_board_based_on_opponent_move(move_made, &user_move_type);
+    return true;
 }
 
 void map_array_coordinate_to_chess_square(int x, int y, char* move){
